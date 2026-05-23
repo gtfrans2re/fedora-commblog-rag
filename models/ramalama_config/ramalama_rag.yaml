@@ -1,0 +1,61 @@
+# ramalama_rag.yaml
+#
+# RamaLama RAG configuration for the Fedora Community Blog editorial assistant.
+# This file defines the pipeline settings: data sources, chunking strategy,
+# embedding model, and retrieval parameters.
+#
+# Usage:
+#   ramalama rag --config models/ramalama_config/ramalama_rag.yaml
+
+# ── Data Source ───────────────────────────────────────────────────────────────
+data:
+  corpus_dir: "data/cleaned"         # Directory of cleaned Markdown articles
+  guidelines_dir: "data/guidelines"  # Editorial guidelines (higher priority)
+  file_types:
+    - "*.md"
+
+# ── Chunking Strategy ─────────────────────────────────────────────────────────
+chunking:
+  strategy: "recursive"              # Options: fixed, recursive, sentence
+  chunk_size: 512                    # Tokens per chunk (tune this!)
+  chunk_overlap: 64                  # Overlap between consecutive chunks
+  respect_headings: true             # Don't split at heading boundaries
+
+# ── Embedding ─────────────────────────────────────────────────────────────────
+embedding:
+  model: "nomic-embed-text"          # Lightweight, runs locally
+  normalize: true
+
+# ── Retrieval ─────────────────────────────────────────────────────────────────
+retrieval:
+  top_k: 5                           # Number of chunks to retrieve per query
+  score_threshold: 0.65              # Minimum similarity score
+
+# ── Generation ────────────────────────────────────────────────────────────────
+generation:
+  system_prompt: |
+    You are an editorial assistant for the Fedora Community Blog.
+    Your role is to help authors check whether their draft articles meet
+    the Community Blog's editorial standards for tone, structure, topic scope,
+    and technical accuracy.
+
+    When reviewing a draft:
+    - Identify specific issues with tone, structure, or technical accuracy.
+    - Reference relevant guidelines or past articles when flagging an issue.
+    - Be constructive and specific — point to the exact part of the draft.
+    - Do not rewrite the article; only provide actionable feedback.
+
+  temperature: 0.3                   # Lower = more factual, less creative
+  max_tokens: 1024
+
+# ── Models to Test ────────────────────────────────────────────────────────────
+# These are benchmarked via scripts/benchmark.py
+models:
+  - name: "qwen2.5:7b"
+    label: "Qwen 2.5 7B"
+  - name: "smollm2:1.7b"
+    label: "SmolLM2 1.7B"
+  - name: "gemma3:4b"
+    label: "Gemma 3 4B"
+  - name: "granite3.3:8b"
+    label: "Granite 3.3 8B"
