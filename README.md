@@ -1,3 +1,4 @@
+```markdown
 # fedora-commblog-rag
 
 A RamaLama-powered RAG tool enhanced on Fedora Community Blog articles and guidelines — helping new authors write better posts.
@@ -7,6 +8,89 @@ A RamaLama-powered RAG tool enhanced on Fedora Community Blog articles and guide
 This project builds a Retrieval-Augmented Generation (RAG) pipeline using [RamaLama](https://github.com/containers/ramalama) on the [Fedora Community Blog](https://communityblog.fedoraproject.org/) writing guidelines and past published articles.
 
 **Use case:** A reviewer pastes a draft article and the model flags whether it meets editorial standards — tone, structure, topic scope, and technical accuracy.
+
+## Project Roadmap
+
+### Goal
+> Build a RAG model trained on the Fedora Community Blog writing guidelines and past
+> articles — to help reviewers flag whether draft posts meet standards for tone,
+> structure, and technical accuracy.
+
+---
+
+### Deliverables
+
+```
++------------------------------------------------------------------+
+|                                                                  |
+|  1  Curate dataset via WordPress REST API                        |
+|     └─ Preserves formatting better than scraping                 |
+|                         |                                        |
+|                         v                                        |
+|  2  Ingest & clean with Docling                                  |
+|     └─ Supports HTML, PDF, Markdown -- feed into RamaLama        |
+|                         |                                        |
+|                         v                                        |
+|  3  Test use case                                                |
+|     └─ Paste draft -- model flags editorial issues               |
+|                         |                                        |
+|                         v                                        |
+|  4  Collect editor feedback (Michal Konecny) & iterate           |
+|     └─ Validate usefulness for new authors                       |
+|                         |                                        |
+|                         v                                        |
+|  5  Expand scope decision                                        |
+|     +-- Works     --> adopt for Fedora Magazine too              |
+|     +-- Does not  --> stay CommBlog-only                         |
+|                         |                                        |
+|                         v                                        |
+|  6  Write a Community Blog article summarizing the work          |
+|                                                                  |
++------------------------------------------------------------------+
+```
+
+---
+
+### Pipeline
+
+```
+WordPress REST API
+       |
+       v
+  data/raw/*.json
+       |
+       v  (Docling)
+  data/cleaned/*.md
+       |
+       v  (RamaLama RAG)
+  Vector Store (Qdrant)
+       |
+       v
+  Editorial Assistant
+```
+
+---
+
+### Models Benchmarked
+
+| Model      | Size    | Hardware             |
+|------------|---------|----------------------|
+| Qwen3      | 4B      | Local laptop         |
+| SmolLM2    | 1.7B    | Local laptop         |
+| Gemma 3    | 4B      | Local laptop         |
+| Granite    | 7B      | Local + GPU VM       |
+| TBD larger | 20B-30B | Remote GPU VM (GPU1) |
+
+---
+
+### Success Criteria & Constraints
+
+| | |
+|---|---|
+| **Success**   | Tool validated by CommBlog editors as useful for new authors |
+| **Scope**     | CommBlog only -- single model, intentionally narrow          |
+| **Timeline**  | ~10 weeks -- iterate on chunking size and model performance  |
+| **Variables** | Chunk size · overlap · model choice · system prompt          |
 
 ## Project Structure
 
@@ -46,7 +130,7 @@ fedora-commblog-rag/
 
 ```bash
 # Clone the repo
-git clone https://github.com/<your-username>/fedora-commblog-rag.git
+git clone https://github.com/gtfrans2re/fedora-commblog-rag.git
 cd fedora-commblog-rag
 
 # Create and activate a virtual environment
@@ -120,3 +204,4 @@ This project is part of an [Outreachy](https://www.outreachy.org/) internship wi
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE) for details.
+```
