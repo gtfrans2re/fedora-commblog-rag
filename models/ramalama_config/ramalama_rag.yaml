@@ -1,61 +1,76 @@
 # ramalama_rag.yaml
 #
-# RamaLama RAG configuration for the Fedora Community Blog editorial assistant.
-# This file defines the pipeline settings: data sources, chunking strategy,
-# embedding model, and retrieval parameters.
-#
-# Usage:
-#   ramalama rag --config models/ramalama_config/ramalama_rag.yaml
+# RamaLama RAG configuration for the Fedora editorial assistant.
+# Covers both the Fedora Community Blog and Fedora Magazine.
 
-# ── Data Source ───────────────────────────────────────────────────────────────
+# ── Data Sources ──────────────────────────────────────────────────────────────
 data:
-  corpus_dir: "data/cleaned"         # Directory of cleaned Markdown articles
-  guidelines_dir: "data/guidelines"  # Editorial guidelines (higher priority)
+  sources:
+    commblog:
+      corpus_dir:    "data/cleaned/commblog"
+      guidelines:    "data/guidelines/commblog_guidelines.md"
+      oci_image:     "localhost/fedora-commblog-rag"
+    magazine:
+      corpus_dir:    "data/cleaned/magazine"
+      guidelines:    "data/guidelines/magazine_guidelines.md"
+      oci_image:     "localhost/fedora-magazine-rag"
+    both:
+      corpus_dirs:
+        - "data/cleaned/commblog"
+        - "data/cleaned/magazine"
+      guidelines:
+        - "data/guidelines/commblog_guidelines.md"
+        - "data/guidelines/magazine_guidelines.md"
+      oci_image:     "localhost/fedora-editorial-rag"
   file_types:
     - "*.md"
 
-# ── Chunking Strategy ─────────────────────────────────────────────────────────
+# ── Chunking ──────────────────────────────────────────────────────────────────
 chunking:
-  strategy: "recursive"              # Options: fixed, recursive, sentence
-  chunk_size: 512                    # Tokens per chunk (tune this!)
-  chunk_overlap: 64                  # Overlap between consecutive chunks
-  respect_headings: true             # Don't split at heading boundaries
+  strategy:         "recursive"
+  chunk_size:       256      # Keeps chunks under the 512-token embedder batch limit
+  chunk_overlap:    32
+  respect_headings: true
 
 # ── Embedding ─────────────────────────────────────────────────────────────────
 embedding:
-  model: "nomic-embed-text"          # Lightweight, runs locally
+  model:     "nomic-embed-text"
   normalize: true
 
 # ── Retrieval ─────────────────────────────────────────────────────────────────
 retrieval:
-  top_k: 5                           # Number of chunks to retrieve per query
-  score_threshold: 0.65              # Minimum similarity score
+  top_k:            5
+  score_threshold:  0.65
 
 # ── Generation ────────────────────────────────────────────────────────────────
 generation:
   system_prompt: |
-    You are an editorial assistant for the Fedora Community Blog.
+    You are an editorial assistant for the Fedora Project's publications:
+    the Fedora Community Blog and Fedora Magazine.
+
     Your role is to help authors check whether their draft articles meet
-    the Community Blog's editorial standards for tone, structure, topic scope,
-    and technical accuracy.
+    the editorial standards of the relevant publication — tone, structure,
+    topic scope, technical accuracy, and required elements (featured image,
+    Read More tag, tags, category, SEO snippet).
 
     When reviewing a draft:
-    - Identify specific issues with tone, structure, or technical accuracy.
+    - Identify which publication the article targets (CommBlog or Magazine).
+    - Flag specific issues with tone, structure, or technical accuracy.
     - Reference relevant guidelines or past articles when flagging an issue.
     - Be constructive and specific — point to the exact part of the draft.
     - Do not rewrite the article; only provide actionable feedback.
+    - End with a clear verdict: READY TO PUBLISH or NEEDS REVISION.
 
-  temperature: 0.3                   # Lower = more factual, less creative
-  max_tokens: 1024
+  temperature: 0.3
+  max_tokens:  1024
 
-# ── Models to Test ────────────────────────────────────────────────────────────
-# These are benchmarked via scripts/benchmark.py
+# ── Models ────────────────────────────────────────────────────────────────────
 models:
-  - name: "qwen2.5:7b"
-    label: "Qwen 2.5 7B"
-  - name: "smollm2:1.7b"
-    label: "SmolLM2 1.7B"
-  - name: "gemma3:4b"
+  - name:  "hf://Qwen/Qwen3-4B-GGUF"
+    label: "Qwen3 4B"
+  - name:  "hf://Qwen/Qwen3-1.7B-GGUF"
+    label: "Qwen3 1.7B"
+  - name:  "hf://ggml-org/gemma-3-4b-it-GGUF"
     label: "Gemma 3 4B"
-  - name: "granite3.3:8b"
-    label: "Granite 3.3 8B"
+  - name:  "hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf"
+    label: "Granite 7B"

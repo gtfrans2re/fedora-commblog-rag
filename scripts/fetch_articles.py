@@ -1,20 +1,28 @@
 """
 fetch_articles.py
 
-Fetches all published articles from the Fedora Community Blog
-via the WordPress REST API and saves them to data/raw/.
+Fetches all published articles from:
+  - Fedora Community Blog  (communityblog.fedoraproject.org)
+  - Fedora Magazine        (fedoramagazine.org)
+
+Each source is saved in its own subdirectory under data/raw/.
 
 Usage:
-    python scripts/fetch_articles.py
+    python scripts/fetch_articles.py              # fetch both
+    python scripts/fetch_articles.py --source commblog
+    python scripts/fetch_articles.py --source magazine
 
 Output:
-    - data/raw/<slug>.json  : One JSON file per article
-    - data/raw/index.json   : Index of all fetched articles
+    - data/raw/commblog/<slug>.json
+    - data/raw/commblog/index.json
+    - data/raw/magazine/<slug>.json
+    - data/raw/magazine/index.json
 """
 
 import os
 import json
 import time
+import argparse
 import requests
 from pathlib import Path
 from tqdm import tqdm
@@ -24,19 +32,32 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_BASE_URL = os.getenv(
-    "WP_API_BASE_URL",
-    "https://communityblog.fedoraproject.org/wp-json/wp/v2"
-)
-API_KEY       = os.getenv("WP_API_KEY", None)   # Only needed if rate-limited
-OUTPUT_DIR    = Path("data/raw")
-PER_PAGE      = 100   # Max allowed by WordPress REST API
-DELAY_SECONDS = 0.5   # Polite delay between requests
+SOURCES = {
+    "commblog": {
+        "label":       "Fedora Community Blog",
+        "api_base":    os.getenv(
+            "WP_COMMBLOG_API_URL",
+            "https://communityblog.fedoraproject.org/wp-json/wp/v2"
+        ),
+        "output_dir":  Path("data/raw/commblog"),
+    },
+    "magazine": {
+        "label":       "Fedora Magazine",
+        "api_base":    os.getenv(
+            "WP_MAGAZINE_API_URL",
+            "https://fedoramagazine.org/wp-json/wp/v2"
+        ),
+        "output_dir":  Path("data/raw/magazine"),
+    },
+}
+
+API_KEY       = os.getenv("WP_API_KEY", None)
+PER_PAGE      = 100
+DELAY_SECONDS = 0.5
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def build_headers() -> dict:
-    """Build request headers, adding auth if an API key is set."""
     headers = {
         "Accept": "application/json",
         "User-Agent": (
@@ -50,8 +71,18 @@ def build_headers() -> dict:
     return headers
 
 
-def fetch_page(page: int, headers: dict) -> list[dict]:
-    """Fetch a single page of posts from the WordPress REST API."""
+def fetch_total_pages(api_base: str, headers: dict) -> int:
+    response = requests.get(
+        f"{api_base}/posts",
+        headers=headers,
+        params={"per_page": PER_PAGE, "page": 1},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return int(response.headers.get("X-WP-TotalPages", 1))
+
+
+def fetch_page(api_base: str, page: int, headers: dict) -> list[dict]:
     params = {
         "per_page": PER_PAGE,
         "page": page,
@@ -61,7 +92,7 @@ def fetch_page(page: int, headers: dict) -> list[dict]:
         ),
     }
     response = requests.get(
-        f"{API_BASE_URL}/posts",
+        f"{api_base}/posts",
         headers=headers,
         params=params,
         timeout=30,
@@ -70,20 +101,8 @@ def fetch_page(page: int, headers: dict) -> list[dict]:
     return response.json()
 
 
-def fetch_total_pages(headers: dict) -> int:
-    """Get the total number of pages available."""
-    response = requests.get(
-        f"{API_BASE_URL}/posts",
-        headers=headers,
-        params={"per_page": PER_PAGE, "page": 1},
-        timeout=30,
-    )
-    response.raise_for_status()
-    return int(response.headers.get("X-WP-TotalPages", 1))
-
-
-def save_article(article: dict, output_dir: Path) -> None:
-    """Save a single article as a JSON file named by its slug."""
+def save_article(article: dict, output_dir: Path, source: str) -> None:
+    article["_source"] = source
     slug = article.get("slug", str(article["id"]))
     filepath = output_dir / f"{slug}.json"
     with open(filepath, "w", encoding="utf-8") as f:
@@ -91,49 +110,79 @@ def save_article(article: dict, output_dir: Path) -> None:
 
 
 def save_index(index: list[dict], output_dir: Path) -> None:
-    """Save a lightweight index of all fetched articles."""
     filepath = output_dir / "index.json"
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
-    print(f"\n Index saved → {filepath} ({len(index)} articles)")
+    print(f"\n  Index saved -> {filepath} ({len(index)} articles)")
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Fetch one source ──────────────────────────────────────────────────────────
 
-def main():
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+def fetch_source(source_key: str) -> None:
+    source     = SOURCES[source_key]
+    label      = source["label"]
+    api_base   = source["api_base"]
+    output_dir = source["output_dir"]
+
+    output_dir.mkdir(parents=True, exist_ok=True)
     headers = build_headers()
 
-    print(f" Connecting to: {API_BASE_URL}")
-    total_pages = fetch_total_pages(headers)
-    print(f" Total pages to fetch: {total_pages}")
+    print(f"\n{'='*55}")
+    print(f"  Fetching: {label}")
+    print(f"  API    : {api_base}")
+    print(f"{'='*55}")
 
-    all_articles = []
+    total_pages = fetch_total_pages(api_base, headers)
+    print(f"  Total pages: {total_pages}")
+
     index = []
 
-    for page in tqdm(range(1, total_pages + 1), desc="Fetching pages"):
+    for page in tqdm(range(1, total_pages + 1), desc=f"  Pages"):
         try:
-            articles = fetch_page(page, headers)
+            articles = fetch_page(api_base, page, headers)
             for article in articles:
-                save_article(article, OUTPUT_DIR)
+                save_article(article, output_dir, source_key)
                 index.append({
-                    "id":       article["id"],
-                    "slug":     article.get("slug"),
-                    "title":    article["title"].get("rendered", ""),
-                    "date":     article.get("date"),
-                    "link":     article.get("link"),
+                    "id":     article["id"],
+                    "slug":   article.get("slug"),
+                    "title":  article["title"].get("rendered", ""),
+                    "date":   article.get("date"),
+                    "link":   article.get("link"),
+                    "source": source_key,
                 })
-                all_articles.append(article)
             time.sleep(DELAY_SECONDS)
         except requests.HTTPError as e:
             print(f"\n  HTTP error on page {page}: {e}")
             continue
         except Exception as e:
-            print(f"\n Unexpected error on page {page}: {e}")
+            print(f"\n  Error on page {page}: {e}")
             continue
 
-    save_index(index, OUTPUT_DIR)
-    print(f" Done! {len(all_articles)} articles saved to {OUTPUT_DIR}/")
+    save_index(index, output_dir)
+    print(f"  Done: {len(index)} articles saved to {output_dir}/")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Fetch articles from Fedora CommBlog and/or Magazine."
+    )
+    parser.add_argument(
+        "--source",
+        choices=["commblog", "magazine", "both"],
+        default="both",
+        help="Which source to fetch (default: both)",
+    )
+    args = parser.parse_args()
+
+    if args.source == "both":
+        fetch_source("commblog")
+        fetch_source("magazine")
+    else:
+        fetch_source(args.source)
+
+    print("\nAll fetching complete.")
 
 
 if __name__ == "__main__":

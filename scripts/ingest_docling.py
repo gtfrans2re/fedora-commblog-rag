@@ -1,51 +1,59 @@
 """
 ingest_docling.py
 
-Processes raw articles fetched from the WordPress REST API using Docling,
-converting them into structured, clean documents ready for the RamaLama
+Processes raw articles from both Fedora Community Blog and Fedora Magazine
+using Docling, converting HTML into structured Markdown for the RamaLama
 RAG pipeline.
 
 Usage:
-    python scripts/ingest_docling.py
+    python scripts/ingest_docling.py              # ingest both
+    python scripts/ingest_docling.py --source commblog
+    python scripts/ingest_docling.py --source magazine
 
 Input:
-    - data/raw/<slug>.json
+    - data/raw/commblog/<slug>.json
+    - data/raw/magazine/<slug>.json
 
 Output:
-    - data/cleaned/<slug>.md   : Markdown version of each article
+    - data/cleaned/commblog/<slug>.md
+    - data/cleaned/magazine/<slug>.md
 """
 
 import json
+import argparse
+import tempfile
+import os
 from pathlib import Path
 from tqdm import tqdm
 from docling.document_converter import DocumentConverter
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.document_converter import PdfFormatOption
-import tempfile
-import os
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-RAW_DIR     = Path("data/raw")
-CLEANED_DIR = Path("data/cleaned")
-SKIP_INDEX  = True   # Skip index.json when processing
+SOURCES = {
+    "commblog": {
+        "raw_dir":     Path("data/raw/commblog"),
+        "cleaned_dir": Path("data/cleaned/commblog"),
+        "label":       "Fedora Community Blog",
+    },
+    "magazine": {
+        "raw_dir":     Path("data/raw/magazine"),
+        "cleaned_dir": Path("data/cleaned/magazine"),
+        "label":       "Fedora Magazine",
+    },
+}
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def load_raw_article(filepath: Path) -> dict:
-    """Load a raw article JSON file."""
     with open(filepath, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def extract_html_content(article: dict) -> str:
-    """Extract the rendered HTML content from a WordPress article."""
     return article.get("content", {}).get("rendered", "")
 
 
-def extract_metadata(article: dict) -> dict:
-    """Extract useful metadata from the article."""
+def extract_metadata(article: dict, source: str) -> dict:
     return {
         "id":       article.get("id"),
         "slug":     article.get("slug"),
@@ -53,38 +61,32 @@ def extract_metadata(article: dict) -> dict:
         "date":     article.get("date"),
         "modified": article.get("modified"),
         "link":     article.get("link"),
+        "source":   source,
         "excerpt":  article.get("excerpt", {}).get("rendered", ""),
     }
 
 
 def html_to_markdown_via_docling(html_content: str) -> str:
-    """
-    Convert raw HTML content to Markdown using Docling.
-    Writes HTML to a temp file, then converts with DocumentConverter.
-    """
     converter = DocumentConverter()
-
-    # Write HTML to a temporary file for Docling to process
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".html", delete=False, encoding="utf-8"
     ) as tmp:
         tmp.write(html_content)
         tmp_path = tmp.name
-
     try:
-        result = converter.convert(tmp_path)
+        result   = converter.convert(tmp_path)
         markdown = result.document.export_to_markdown()
     finally:
-        os.unlink(tmp_path)  # Clean up temp file
-
+        os.unlink(tmp_path)
     return markdown
 
 
 def build_document(metadata: dict, markdown_content: str) -> str:
-    """
-    Assemble the final document with a YAML-style frontmatter header
-    followed by the article content in Markdown.
-    """
+    source_label = {
+        "commblog": "Fedora Community Blog",
+        "magazine":  "Fedora Magazine",
+    }.get(metadata.get("source", ""), metadata.get("source", ""))
+
     frontmatter = (
         f"---\n"
         f"id: {metadata['id']}\n"
@@ -93,6 +95,7 @@ def build_document(metadata: dict, markdown_content: str) -> str:
         f"date: {metadata['date']}\n"
         f"modified: {metadata['modified']}\n"
         f"link: {metadata['link']}\n"
+        f"source: {source_label}\n"
         f"---\n\n"
     )
 
@@ -107,51 +110,76 @@ def build_document(metadata: dict, markdown_content: str) -> str:
 
 
 def save_cleaned(content: str, slug: str, output_dir: Path) -> None:
-    """Save the cleaned Markdown document."""
     filepath = output_dir / f"{slug}.md"
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Ingest one source ─────────────────────────────────────────────────────────
 
-def main():
-    CLEANED_DIR.mkdir(parents=True, exist_ok=True)
+def ingest_source(source_key: str) -> None:
+    source      = SOURCES[source_key]
+    raw_dir     = source["raw_dir"]
+    cleaned_dir = source["cleaned_dir"]
+    label       = source["label"]
+
+    cleaned_dir.mkdir(parents=True, exist_ok=True)
 
     raw_files = [
-        f for f in RAW_DIR.glob("*.json")
+        f for f in raw_dir.glob("*.json")
         if f.name != "index.json"
     ]
 
     if not raw_files:
-        print(f" No raw articles found in {RAW_DIR}/. Run fetch_articles.py first.")
+        print(f"\n  No raw articles in {raw_dir}/. Run fetch_articles.py first.")
         return
 
-    print(f"📂 Found {len(raw_files)} raw articles to process.")
+    print(f"\n{'='*55}")
+    print(f"  Ingesting: {label} ({len(raw_files)} articles)")
+    print(f"{'='*55}")
+
     success, failed = 0, []
 
-    for filepath in tqdm(raw_files, desc="Ingesting with Docling"):
+    for filepath in tqdm(raw_files, desc="  Ingesting"):
         try:
             article  = load_raw_article(filepath)
-            metadata = extract_metadata(article)
+            metadata = extract_metadata(article, source_key)
             html     = extract_html_content(article)
 
             if not html.strip():
-                print(f"\n  Skipping empty article: {metadata['slug']}")
                 continue
 
             markdown = html_to_markdown_via_docling(html)
             document = build_document(metadata, markdown)
-            save_cleaned(document, metadata["slug"], CLEANED_DIR)
+            save_cleaned(document, metadata["slug"], cleaned_dir)
             success += 1
-
         except Exception as e:
-            print(f"\n Failed to process {filepath.name}: {e}")
+            print(f"\n  Failed: {filepath.name}: {e}")
             failed.append(filepath.name)
 
-    print(f"\n Ingestion complete: {success} succeeded, {len(failed)} failed.")
-    if failed:
-        print(f"   Failed files: {', '.join(failed)}")
+    print(f"\n  Done: {success} succeeded, {len(failed)} failed.")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Ingest articles from CommBlog and/or Magazine with Docling."
+    )
+    parser.add_argument(
+        "--source",
+        choices=["commblog", "magazine", "both"],
+        default="both",
+    )
+    args = parser.parse_args()
+
+    if args.source == "both":
+        ingest_source("commblog")
+        ingest_source("magazine")
+    else:
+        ingest_source(args.source)
+
+    print("\nAll ingestion complete.")
 
 
 if __name__ == "__main__":

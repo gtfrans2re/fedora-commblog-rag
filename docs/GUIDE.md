@@ -1,13 +1,12 @@
 # Complete Pipeline Guide — fedora-commblog-rag
 
 A step-by-step guide to run the full pipeline from a fresh clone
-to benchmarked RAG results.
+to benchmarked RAG results across both the Fedora Community Blog
+and Fedora Magazine.
 
 ---
 
 ## Prerequisites
-
-Before starting, make sure you have the following installed on your machine:
 
 | Tool | Min Version | Check |
 |------|-------------|-------|
@@ -27,8 +26,7 @@ sudo dnf install ramalama
 pip install ramalama
 ```
 
-> For full RamaLama installation options, see:
-> https://github.com/containers/ramalama
+> Full RamaLama installation options: https://github.com/containers/ramalama
 
 ---
 
@@ -47,7 +45,8 @@ ls -la
 
 Expected output:
 
-```
+~~~
+app.py
 data/
 docs/
 models/
@@ -57,7 +56,7 @@ scripts/
 LICENSE
 README.md
 requirements.txt
-```
+~~~
 
 ---
 
@@ -79,21 +78,14 @@ source venv/bin/activate
 venv\Scripts\activate
 ```
 
-Your terminal prompt should now show `(venv)` at the start.
-
-### 1.3 Upgrade pip
+### 1.3 Upgrade pip and install dependencies
 
 ```bash
 pip install --upgrade pip
-```
-
-### 1.4 Install all dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 1.5 Verify key packages installed correctly
+### 1.4 Verify key packages
 
 ```bash
 python -c "import requests; print('requests ok')"
@@ -101,6 +93,7 @@ python -c "import docling; print('docling ok')"
 python -c "import pandas; print('pandas ok')"
 python -c "import tqdm; print('tqdm ok')"
 python -c "import matplotlib; print('matplotlib ok')"
+python -c "import streamlit; print('streamlit ok')"
 ```
 
 ---
@@ -110,129 +103,152 @@ python -c "import matplotlib; print('matplotlib ok')"
 ### 2.1 Create your `.env` file
 
 ```bash
-cp .env.example .env 2>/dev/null || touch .env
-```
-
-### 2.2 Open and edit `.env`
-
-```bash
+touch .env
 nano .env
 ```
 
 Add the following:
 
 ```env
-WP_API_BASE_URL=https://communityblog.fedoraproject.org/wp-json/wp/v2
+WP_COMMBLOG_API_URL=https://communityblog.fedoraproject.org/wp-json/wp/v2
+WP_MAGAZINE_API_URL=https://fedoramagazine.org/wp-json/wp/v2
 WP_API_KEY=      # Leave blank unless you hit rate limits
 ```
 
 Save and close (`Ctrl+O`, `Enter`, `Ctrl+X`).
 
-> **Note:** No API key is needed for public articles.
-> Only add one if you start hitting rate limit errors (HTTP 429).
-
 ---
 
 ## Step 3 — Add the Editorial Guidelines
 
-The RAG pipeline uses both past articles and the editorial
-guidelines as its knowledge base. The guidelines need to be added
-manually as they are not available via the API.
-
-### 3.1 Create a guidelines file
+Both publications have guidelines files already provided in `data/guidelines/`.
+Review and expand them as needed:
 
 ```bash
+# CommBlog guidelines
 nano data/guidelines/commblog_guidelines.md
+
+# Magazine guidelines
+nano data/guidelines/magazine_guidelines.md
 ```
 
-Paste in the CommBlog editorial guidelines (tone, structure,
-required elements, topic scope, etc.) from:
-- https://docs.fedoraproject.org/en-US/commops/commblog/
-- Any internal style guide shared by your mentors
+Sources:
+- CommBlog: https://docs.fedoraproject.org/en-US/commops/commblog/
+- Magazine: https://docs.fedoraproject.org/en-US/fedora-magazine/
 
-Save and close.
-
-> **Tip:** Even a rough first version is fine here.
-> You can refine the guidelines file as you learn more
-> from the editors (Michal Konecny).
+> **Tip:** Refine both files as you get feedback from editors
+> (Michal Konecny for CommBlog, Magazine editorial team).
 
 ---
 
-## Step 4 — Fetch Articles from the WordPress API
+## Step 4 — Fetch Articles from Both WordPress APIs
 
-This script downloads all published articles from the Fedora
-Community Blog and saves them as JSON files in `data/raw/`.
+The fetcher supports three modes: `commblog`, `magazine`, or `both`.
 
-### 4.1 Run the fetcher
+### 4.1 Fetch both sources (recommended)
 
 ```bash
 python scripts/fetch_articles.py
 ```
 
-### 4.2 What to expect
-
-```
-Connecting to: https://communityblog.fedoraproject.org/wp-json/wp/v2
-Total pages to fetch: 12
-Fetching pages: 100%|████████████| 12/12 [00:08<00:00]
-Index saved -> data/raw/index.json (1147 articles)
-Done! 1147 articles saved to data/raw/
-```
-
-### 4.3 Verify the output
+### 4.2 Fetch a single source
 
 ```bash
-# Count how many articles were saved
-ls data/raw/*.json | wc -l
+python scripts/fetch_articles.py --source commblog
+python scripts/fetch_articles.py --source magazine
+```
 
-# Peek at the index
-cat data/raw/index.json | python -m json.tool | head -30
+### 4.3 What to expect
 
-# Inspect a single article file
-ls data/raw/ | grep -v index | head -1 | xargs -I{} cat data/raw/{}
+```
+=======================================================
+  Fetching: Fedora Community Blog
+  API    : https://communityblog.fedoraproject.org/wp-json/wp/v2
+=======================================================
+  Total pages: 12
+  Pages: 100%|████████████| 12/12 [00:08<00:00]
+  Index saved -> data/raw/commblog/index.json (1147 articles)
+  Done: 1147 articles saved to data/raw/commblog/
+
+=======================================================
+  Fetching: Fedora Magazine
+  API    : https://fedoramagazine.org/wp-json/wp/v2
+=======================================================
+  Total pages: 38
+  Pages: 100%|████████████| 38/38 [00:25<00:00]
+  Index saved -> data/raw/magazine/index.json (3742 articles)
+  Done: 3742 articles saved to data/raw/magazine/
+```
+
+### 4.4 Verify the output
+
+```bash
+# Count CommBlog articles
+ls data/raw/commblog/*.json | wc -l
+
+# Count Magazine articles
+ls data/raw/magazine/*.json | wc -l
+
+# Peek at the CommBlog index
+cat data/raw/commblog/index.json | python -m json.tool | head -20
 ```
 
 ### Troubleshooting
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `HTTP 403` | Server blocking default User-Agent | Add `User-Agent` header in `build_headers()` |
+| `HTTP 403` | Server blocking User-Agent | User-Agent header already set in script |
 | `HTTP 429` | Rate limited | Add `WP_API_KEY` to `.env` or increase `DELAY_SECONDS` |
-| `ConnectionError` | No internet / wrong URL | Check `WP_API_BASE_URL` in `.env` |
-| `0 articles saved` | API returned empty | Check the API directly in your browser |
+| `ConnectionError` | No internet / wrong URL | Check `.env` API URLs |
+| `0 articles saved` | API returned empty | Test the URL directly in your browser |
 
 ---
 
 ## Step 5 — Ingest with Docling
 
-This script converts each raw HTML article into clean Markdown
-with YAML frontmatter, using Docling.
+Converts raw HTML articles into clean Markdown with YAML frontmatter.
+Each source gets its own output directory.
 
-### 5.1 Run the ingestion
+### 5.1 Ingest both sources
 
 ```bash
 python scripts/ingest_docling.py
 ```
 
-### 5.2 What to expect
-
-```
-Found 1147 raw articles to process.
-Ingesting with Docling: 100%|████████████| 1147/1147 [04:30<00:00]
-Ingestion complete: 1143 succeeded, 4 failed.
-```
-
-### 5.3 Verify the output
+### 5.2 Ingest a single source
 
 ```bash
-# Count cleaned Markdown files
-ls data/cleaned/*.md | wc -l
-
-# Inspect a cleaned article
-ls data/cleaned/*.md | head -1 | xargs cat | head -40
+python scripts/ingest_docling.py --source commblog
+python scripts/ingest_docling.py --source magazine
 ```
 
-A correctly processed file should look like:
+### 5.3 What to expect
+
+```
+=======================================================
+  Ingesting: Fedora Community Blog (1147 articles)
+=======================================================
+  Ingesting: 100%|████████████| 1147/1147 [04:30<00:00]
+  Done: 1143 succeeded, 4 failed.
+
+=======================================================
+  Ingesting: Fedora Magazine (3742 articles)
+=======================================================
+  Ingesting: 100%|████████████| 3742/3742 [14:10<00:00]
+  Done: 3738 succeeded, 4 failed.
+```
+
+### 5.4 Verify the output
+
+```bash
+ls data/cleaned/commblog/*.md | wc -l
+ls data/cleaned/magazine/*.md | wc -l
+
+# Inspect a cleaned article — note the source field in frontmatter
+ls data/cleaned/commblog/*.md | head -1 | xargs cat | head -12
+```
+
+A correctly processed file looks like:
 
 ```markdown
 ---
@@ -242,13 +258,12 @@ title: "My Article Title"
 date: 2025-03-14T10:00:00
 modified: 2025-03-15T08:00:00
 link: https://communityblog.fedoraproject.org/my-article-slug/
+source: Fedora Community Blog
 ---
 
-> Brief excerpt text here.
+> Brief excerpt here.
 
 ## Introduction
-
-Article body content in clean Markdown...
 ```
 
 ### Troubleshooting
@@ -256,49 +271,58 @@ Article body content in clean Markdown...
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `docling not found` | Package missing | `pip install docling` |
-| `Failed to process X.json` | Malformed HTML | Check the raw JSON; may be an empty post |
-| Slow processing | Large corpus | Normal — Docling processes files sequentially |
+| `Failed to process X.json` | Malformed HTML | May be an empty post — safe to ignore |
+| Slow processing | Large Magazine corpus | Normal — runs sequentially |
 
 ---
 
 ## Step 6 — Clean the Dataset
 
-This script cleans the Markdown files in-place and runs
-editorial quality checks on every article.
+Cleans Markdown files in-place and runs editorial quality checks.
+Generates a `quality_report.json` per source.
 
-### 6.1 Run the cleaner
+### 6.1 Clean both sources
 
 ```bash
 python scripts/clean_dataset.py
 ```
 
-### 6.2 What to expect
-
-```
-Cleaning 1143 articles...
-Cleaning articles: 100%|████████████| 1143/1143 [00:45<00:00]
-
-Quality report saved -> data/cleaned/quality_report.json
-
---------------------------------------------------
-  Dataset Quality Summary
---------------------------------------------------
-  Total articles  : 1143
-  Passed          : 891
-  Failed          : 252
---------------------------------------------------
-```
-
-### 6.3 Review the quality report
+### 6.2 Clean a single source
 
 ```bash
-# Pretty-print the report
-cat data/cleaned/quality_report.json | python -m json.tool | head -60
+python scripts/clean_dataset.py --source commblog
+python scripts/clean_dataset.py --source magazine
+```
 
-# Count articles that failed each specific check
+### 6.3 What to expect
+
+```
+  Fedora Community Blog
+  ----------------------------------------
+  Total   : 1143
+  Passed  : 891
+  Failed  : 252
+
+  Fedora Magazine
+  ----------------------------------------
+  Total   : 3738
+  Passed  : 3201
+  Failed  : 537
+```
+
+### 6.4 Review the quality reports
+
+```bash
+# CommBlog report
+cat data/cleaned/commblog/quality_report.json | python -m json.tool | head -40
+
+# Magazine report
+cat data/cleaned/magazine/quality_report.json | python -m json.tool | head -40
+
+# Count failures per check for CommBlog
 python -c "
 import json
-report = json.load(open('data/cleaned/quality_report.json'))
+report = json.load(open('data/cleaned/commblog/quality_report.json'))
 checks = ['has_featured_image','has_more_tag','has_headings','has_min_length','has_title']
 for c in checks:
     failed = sum(1 for r in report if not r['quality'].get(c, True))
@@ -306,17 +330,11 @@ for c in checks:
 "
 ```
 
-> **Note:** Articles that fail quality checks are not removed —
-> they are kept in the corpus but flagged. The quality report is
-> used by the RAG pipeline to understand what "bad" looks like,
-> which is just as useful as knowing what "good" looks like.
-
 ---
 
 ## Step 7 — Pull the Models
 
-Before running the RAG pipeline, pull each model locally with RamaLama.
-Use the HuggingFace format — the `ollama://` format is deprecated.
+Use HuggingFace format — `ollama://` is deprecated in RamaLama.
 
 ```bash
 ramalama pull hf://Qwen/Qwen3-4B-GGUF
@@ -326,11 +344,9 @@ ramalama pull hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
 ```
 
 > **Hardware note:**
-> - 4B–8B models: require ~4–8 GB RAM/VRAM — fine on most laptops
-> - If you run into memory issues, start with `hf://Qwen/Qwen3-1.7B-GGUF` only
+> - 4B–8B models: ~4–8 GB RAM/VRAM — fine on most laptops
+> - Start with `hf://Qwen/Qwen3-1.7B-GGUF` if memory is tight
 > - For 20B+ models, use the GPU1 VM (coordinate with Dominik Kawka)
-
-Verify models are available:
 
 ```bash
 ramalama list
@@ -338,89 +354,93 @@ ramalama list
 
 ---
 
-## Step 8 — Build the RAG Vector Store
+## Step 8 — Build the RAG Vector Stores
 
-This is a two-step process: first build the vector store from your
-corpus, then run queries against it. Both steps use `localhost/`
-as the image prefix — never `quay.io/` (that tries to pull from
-the internet and will fail).
+Build a separate OCI image for each publication, plus one combined image.
+Always use the `localhost/` prefix — `quay.io/` tries to pull from the
+internet and will fail.
 
-### 8.1 Build the vector store
-
-```bash
-ramalama rag --chunk-size 256 data/cleaned localhost/fedora-commblog-rag
-```
-
-> **Why `--chunk-size 256`?** The default chunk size of 400 tokens
-> occasionally produces chunks of 500+ tokens, which exceeds the
-> embedder's 512-token batch limit and crashes the build. 256 keeps
-> all chunks safely within the limit.
-
-### 8.2 What to expect
-
-```
-Reading article-slug.md (1/1789)...
-...
-Reading youre-invited-to-the-fedora-linux-37-release-party.md (1789/1789)...
-Chunking documents...
-  7340 chunks created
-Embedding chunks via llama.cpp...
-  Embedding 7340/7340 chunks...
-Stored 7340 vectors in Qdrant
-```
-
-### 8.3 Verify the image was created locally
+### 8.1 CommBlog vector store
 
 ```bash
-podman images | grep fedora-commblog-rag
+ramalama rag --chunk-size 256 data/cleaned/commblog localhost/fedora-commblog-rag
+```
+
+### 8.2 Magazine vector store
+
+```bash
+ramalama rag --chunk-size 256 data/cleaned/magazine localhost/fedora-magazine-rag
+```
+
+### 8.3 Combined vector store (both publications)
+
+```bash
+ramalama rag --chunk-size 256 data/cleaned localhost/fedora-editorial-rag
+```
+
+> **Why `--chunk-size 256`?** The default (400 tokens) occasionally produces
+> chunks exceeding the embedder's 512-token batch limit, crashing the build.
+> 256 keeps all chunks safely within the limit.
+
+### 8.4 Verify all images exist
+
+```bash
+podman images | grep fedora
 ```
 
 Expected output:
 
-```
-localhost/fedora-commblog-rag   latest   <image-id>   X minutes ago   XXX MB
-```
+~~~
+localhost/fedora-commblog-rag    latest   <id>   X min ago   XXX MB
+localhost/fedora-magazine-rag    latest   <id>   X min ago   XXX MB
+localhost/fedora-editorial-rag   latest   <id>   X min ago   XXX MB
+~~~
 
 ### Troubleshooting
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `input (N tokens) is too large` | Chunk too big for embedder | Lower `--chunk-size` further, e.g. `--chunk-size 200` |
-| `image does not exist` on run | Used `quay.io/` prefix | Always use `localhost/` prefix |
-| Podman not running | Podman daemon inactive | `systemctl --user start podman` |
+| `input (N tokens) is too large` | Chunk too big | Lower to `--chunk-size 200` |
+| `image does not exist` on run | Wrong prefix | Always use `localhost/` |
+| Podman not running | Daemon inactive | `systemctl --user start podman` |
 
 ---
 
 ## Step 9 — Test a Single RAG Query
 
-Do a quick sanity check with a single query before running
-the full benchmark.
+Quick sanity check before running the full benchmark.
+
+### CommBlog
 
 ```bash
 ramalama run --rag localhost/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
 ```
 
-This opens an interactive prompt. Type your query and press Enter:
+### Magazine
+
+```bash
+ramalama run --rag localhost/fedora-magazine-rag hf://Qwen/Qwen3-4B-GGUF
+```
+
+Each opens an interactive prompt. Type a test query:
 
 ```
 What tone should a Fedora Community Blog article use?
 ```
 
-A good response will reference specific guidelines from the corpus,
-be constructive and grounded, and mention things like professional
-tone, Fedora community audience, and technical accuracy.
+```
+What are the required elements for a Fedora Magazine article?
+```
 
-Press `Ctrl+D` to exit the interactive session.
+Press `Ctrl+D` to exit.
 
 ---
 
 ## Step 10 — Test the Reference Articles
 
-Test the RAG model against the known good and bad articles from
-the project spec to validate editorial feedback quality.
+### CommBlog reference articles
 
-### Good articles (model should confirm they meet standards)
-
+**Good** (model should confirm they meet standards):
 ```
 https://communityblog.fedoraproject.org/f44-election-nominations-now-open/
 https://communityblog.fedoraproject.org/code-of-conduct-report-2025/
@@ -429,8 +449,7 @@ https://communityblog.fedoraproject.org/the-forge-is-our-new-home/
 https://communityblog.fedoraproject.org/two-shell-functions-to-simplify-pagure-pull-request-reviews/
 ```
 
-### Bad articles (model should flag specific issues)
-
+**Bad** (model should flag specific issues):
 ```
 https://communityblog.fedoraproject.org/fedora-and-centos-scale-23x-2026/
   Issue: missing featured image
@@ -441,157 +460,59 @@ https://communityblog.fedoraproject.org/community-update-week-20/
 
 ### 10.1 Test in the terminal
 
-Start an interactive RAG session:
-
 ```bash
+# CommBlog session
 ramalama run --rag localhost/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
+
+# Magazine session
+ramalama run --rag localhost/fedora-magazine-rag hf://Qwen/Qwen3-4B-GGUF
 ```
 
-Then paste each of these prompts one at a time:
+Paste one of these prompts at the interactive prompt:
 
 ```
-# Good article test — paste the article content and ask:
-Review this article draft. Does it meet Fedora Community Blog
-editorial standards for tone, structure, and required elements?
-
+Review this article draft. Does it meet the editorial standards
+for tone, structure, featured image, and the Read More tag?
 [paste article content here]
 ```
 
 ```
-# Bad article test — explicitly mention the missing elements:
-This article has no featured image and no --more-- tag.
-What Fedora Community Blog guidelines does it violate and
-what should the author fix?
+This article is missing a featured image and the Read More tag.
+What guidelines does it violate and what should the author fix?
 ```
 
 ### 10.2 Test in the notebook
-
-Open the notebook:
 
 ```bash
 jupyter notebook notebooks/exploration.ipynb
 ```
 
-Navigate to **Section 4 — RAG Query Testing** and run the
-following in the ad-hoc query cells:
+Navigate to **Section 6 — Reference Article Tests** and run
+the good/bad article cells there.
 
-```python
-# --- Good article test ---
-GOOD_ARTICLE_PROMPT = """
-Review this article. Does it meet Fedora Community Blog editorial
-standards for tone, structure, featured image, and use of the
---more-- tag?
+### 10.3 Use the GUI (easiest)
 
-Title: F44 Election Nominations Now Open
-Link: https://communityblog.fedoraproject.org/f44-election-nominations-now-open/
-
-[paste article body here]
-"""
-
-response = query_rag_adhoc('hf://Qwen/Qwen3-4B-GGUF', GOOD_ARTICLE_PROMPT)
-print(response)
+```bash
+streamlit run app.py
 ```
 
-```python
-# --- Bad article test (missing featured image) ---
-BAD_ARTICLE_PROMPT_1 = """
-This article was published without a featured image.
-According to Fedora Community Blog guidelines, is a featured image
-required? What impact does a missing featured image have and
-what should the author do to fix it?
-
-Link: https://communityblog.fedoraproject.org/fedora-and-centos-scale-23x-2026/
-"""
-
-response = query_rag_adhoc('hf://Qwen/Qwen3-4B-GGUF', BAD_ARTICLE_PROMPT_1)
-print(response)
-```
-
-```python
-# --- Bad article test (missing --more-- tag) ---
-BAD_ARTICLE_PROMPT_2 = """
-This article is missing the --more-- tag.
-According to Fedora Community Blog guidelines, what is the
---more-- tag, why is it required, and what happens to the
-article homepage listing when it is absent?
-
-Link: https://communityblog.fedoraproject.org/community-update-week-20/
-"""
-
-response = query_rag_adhoc('hf://Qwen/Qwen3-4B-GGUF', BAD_ARTICLE_PROMPT_2)
-print(response)
-```
-
-```python
-# --- Run all reference articles in a loop ---
-REFERENCE_TESTS = [
-    {
-        "label": "Good — F44 Election Nominations",
-        "expected": "pass",
-        "prompt": "Does this article meet CommBlog standards? Title: F44 Election Nominations Now Open. [paste content]"
-    },
-    {
-        "label": "Good — Code of Conduct Report 2025",
-        "expected": "pass",
-        "prompt": "Does this article meet CommBlog standards? Title: Code of Conduct Report 2025. [paste content]"
-    },
-    {
-        "label": "Good — Throwing Random Arguments at System Binaries",
-        "expected": "pass",
-        "prompt": "Does this article meet CommBlog standards? Title: Throwing Random Arguments at System Binaries. [paste content]"
-    },
-    {
-        "label": "Good — The Forge Is Our New Home",
-        "expected": "pass",
-        "prompt": "Does this article meet CommBlog standards? Title: The Forge Is Our New Home. [paste content]"
-    },
-    {
-        "label": "Good — Two Shell Functions to Simplify Pagure Pull Request Reviews",
-        "expected": "pass",
-        "prompt": "Does this article meet CommBlog standards? Title: Two Shell Functions to Simplify Pagure. [paste content]"
-    },
-    {
-        "label": "Bad — Missing featured image",
-        "expected": "fail",
-        "prompt": "This article has no featured image. What CommBlog guideline does this violate?"
-    },
-    {
-        "label": "Bad — Missing --more-- tag",
-        "expected": "fail",
-        "prompt": "This article is missing the --more-- tag. What CommBlog guideline does this violate?"
-    },
-]
-
-MODEL = 'hf://Qwen/Qwen3-4B-GGUF'
-
-for test in REFERENCE_TESTS:
-    print(f"\n{'='*60}")
-    print(f"  {test['label']}  [expected: {test['expected']}]")
-    print(f"{'='*60}")
-    response = query_rag_adhoc(MODEL, test['prompt'])
-    print(response)
-```
+Select the publication in the sidebar, paste the article in the
+**Paste your draft** tab, and click **Review Article**. Use the
+**Load good example** and **Load bad example** tabs to quickly
+test the reference articles.
 
 ---
 
 ## Step 11 — Run the Full Benchmark
 
-This script runs 5 editorial test prompts across all models
-and saves results to `results/`.
-
-### 11.1 Run the benchmark
-
 ```bash
 python scripts/benchmark.py
 ```
 
-### 11.2 Review the results
+Review results:
 
 ```bash
-# Read the Markdown summary table
 cat results/benchmark_summary.md
-
-# Or open the full JSON
 cat results/benchmark_*.json | python -m json.tool
 ```
 
@@ -603,42 +524,41 @@ cat results/benchmark_*.json | python -m json.tool
 jupyter notebook notebooks/exploration.ipynb
 ```
 
-Run the cells in order:
-1. **Setup** — confirms paths and file counts
-2. **Dataset Overview** — articles per year chart
-3. **Quality Report** — pass rate charts, failed article list
-4. **Chunking Experiments** — compare chunk sizes on a sample article
-5. **RAG Query Testing** — reference article tests (Section 10 above)
-6. **Benchmark Visualization** — latency/score bar charts + heatmap
+Sections:
+1. **Setup** — confirms paths and file counts for both sources
+2. **Dataset Overview** — articles per year, per publication
+3. **Quality Report** — pass rates and failure breakdown per source
+4. **Chunking Experiments** — compare chunk sizes on sample articles
+5. **RAG Query Testing** — live queries against CommBlog and Magazine
+6. **Reference Article Tests** — good/bad article validation
+7. **Benchmark Visualization** — latency/score charts + heatmap
 
 ---
 
 ## Step 13 — Iterate
 
-Based on your results, iterate on the key variables:
-
 ### Tune chunking
 
-Rebuild the RAG store with a different chunk size:
-
 ```bash
-ramalama rag --chunk-size 128 data/cleaned localhost/fedora-commblog-rag
+# Rebuild with a different chunk size
+ramalama rag --chunk-size 200 data/cleaned/commblog localhost/fedora-commblog-rag
+ramalama rag --chunk-size 200 data/cleaned/magazine  localhost/fedora-magazine-rag
 ```
 
 Try values: `128`, `200`, `256`, `384`. Re-test after each rebuild.
 
 ### Refine the system prompt
 
-Edit `models/ramalama_config/ramalama_rag.yaml` and update the
-`system_prompt` field to be more or less specific, then rebuild.
+Edit `models/ramalama_config/ramalama_rag.yaml` → `generation.system_prompt`,
+rebuild, and compare responses.
 
-### Add more guidelines
+### Expand guidelines
 
-Drop additional `.md` files into `data/guidelines/` and rebuild:
+Add or refine content in:
+- `data/guidelines/commblog_guidelines.md`
+- `data/guidelines/magazine_guidelines.md`
 
-```bash
-ramalama rag --chunk-size 256 data/cleaned localhost/fedora-commblog-rag
-```
+Then rebuild the relevant vector store.
 
 ---
 
@@ -648,13 +568,13 @@ ramalama rag --chunk-size 256 data/cleaned localhost/fedora-commblog-rag
 # Activate environment
 source venv/bin/activate
 
-# 1. Fetch data
+# 1. Fetch both sources
 python scripts/fetch_articles.py
 
 # 2. Ingest with Docling
 python scripts/ingest_docling.py
 
-# 3. Clean dataset
+# 3. Clean both datasets
 python scripts/clean_dataset.py
 
 # 4. Pull models (first time only)
@@ -663,19 +583,25 @@ ramalama pull hf://Qwen/Qwen3-1.7B-GGUF
 ramalama pull hf://ggml-org/gemma-3-4b-it-GGUF
 ramalama pull hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
 
-# 5. Build RAG vector store
-ramalama rag --chunk-size 256 data/cleaned localhost/fedora-commblog-rag
+# 5. Build RAG vector stores
+ramalama rag --chunk-size 256 data/cleaned/commblog localhost/fedora-commblog-rag
+ramalama rag --chunk-size 256 data/cleaned/magazine  localhost/fedora-magazine-rag
+ramalama rag --chunk-size 256 data/cleaned           localhost/fedora-editorial-rag
 
-# 6. Verify image exists
-podman images | grep fedora-commblog-rag
+# 6. Verify images
+podman images | grep fedora
 
-# 7. Interactive RAG session
+# 7. Launch the GUI
+streamlit run app.py
+
+# 8. Or use terminal sessions directly
 ramalama run --rag localhost/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag localhost/fedora-magazine-rag  hf://Qwen/Qwen3-4B-GGUF
 
-# 8. Full benchmark
+# 9. Full benchmark
 python scripts/benchmark.py
 
-# 9. Explore results
+# 10. Explore results
 jupyter notebook notebooks/exploration.ipynb
 ```
 
@@ -684,8 +610,10 @@ jupyter notebook notebooks/exploration.ipynb
 ## Commit Your Results
 
 ```bash
-git add results/ docs/notes.md data/cleaned/quality_report.json
-git commit -m "feat: add benchmark results for qwen/smollm/gemma/granite"
+git add results/ docs/notes.md
+git add data/cleaned/commblog/quality_report.json
+git add data/cleaned/magazine/quality_report.json
+git commit -m "feat: add benchmark results for commblog and magazine"
 git push
 ```
 
@@ -701,3 +629,4 @@ git push
 | Dominik Kawka | GPU1 VM access, tech stack advice |
 | Carol Chen | Sprint process, scope questions |
 | Michal Konecny | CommBlog editorial feedback |
+| Fedora Magazine editors | Magazine editorial feedback |

@@ -1,12 +1,19 @@
 # fedora-commblog-rag
 
-A RamaLama-powered RAG tool trained on Fedora Community Blog articles and guidelines — helping new authors write better posts.
+A RamaLama-powered RAG tool trained on Fedora Community Blog and Fedora Magazine
+articles and guidelines — helping new authors write better posts.
 
 ## Overview
 
-This project builds a Retrieval-Augmented Generation (RAG) pipeline using [RamaLama](https://github.com/containers/ramalama) on the [Fedora Community Blog](https://communityblog.fedoraproject.org/) writing guidelines and past published articles.
+This project builds a Retrieval-Augmented Generation (RAG) pipeline using
+[RamaLama](https://github.com/containers/ramalama) on the writing guidelines
+and past published articles of two Fedora publications:
 
-**Use case:** A reviewer pastes a draft article and the model flags whether it meets editorial standards — tone, structure, topic scope, and technical accuracy.
+- [Fedora Community Blog](https://communityblog.fedoraproject.org/) — for contributors
+- [Fedora Magazine](https://fedoramagazine.org/) — for the broader Linux community
+
+**Use case:** A reviewer pastes a draft article and the model flags whether it
+meets editorial standards — tone, structure, topic scope, and technical accuracy.
 
 ---
 
@@ -14,9 +21,9 @@ This project builds a Retrieval-Augmented Generation (RAG) pipeline using [RamaL
 
 ### Goal
 
-> Build a RAG model trained on the Fedora Community Blog writing guidelines and past
-> articles — to help reviewers flag whether draft posts meet standards for tone,
-> structure, and technical accuracy.
+> Build a RAG model trained on Fedora Community Blog and Fedora Magazine writing
+> guidelines and past articles — to help reviewers flag whether draft posts meet
+> standards for tone, structure, and technical accuracy.
 
 ---
 
@@ -26,7 +33,8 @@ This project builds a Retrieval-Augmented Generation (RAG) pipeline using [RamaL
 +------------------------------------------------------------------+
 |                                                                  |
 |  1  Curate dataset via WordPress REST API                        |
-|     └─ Preserves formatting better than scraping                 |
+|     ├─ Fedora Community Blog                                     |
+|     └─ Fedora Magazine                                           |
 |                         |                                        |
 |                         v                                        |
 |  2  Ingest & clean with Docling                                  |
@@ -37,13 +45,14 @@ This project builds a Retrieval-Augmented Generation (RAG) pipeline using [RamaL
 |     └─ Paste draft -- model flags editorial issues               |
 |                         |                                        |
 |                         v                                        |
-|  4  Collect editor feedback (Michal Konecny) & iterate           |
-|     └─ Validate usefulness for new authors                       |
+|  4  Collect editor feedback & iterate                            |
+|     ├─ CommBlog: Michal Konecny                                  |
+|     └─ Magazine: editorial team                                  |
 |                         |                                        |
 |                         v                                        |
 |  5  Expand scope decision                                        |
-|     +-- Works     --> adopt for Fedora Magazine too              |
-|     +-- Does not  --> stay CommBlog-only                         |
+|     +-- Works for Magazine --> adopt for both publications       |
+|     +-- Does not fit       --> stay CommBlog-only                |
 |                         |                                        |
 |                         v                                        |
 |  6  Write a Community Blog article summarizing the work          |
@@ -56,19 +65,23 @@ This project builds a Retrieval-Augmented Generation (RAG) pipeline using [RamaL
 ### Pipeline
 
 ~~~
-WordPress REST API
-       |
-       v
-  data/raw/*.json
-       |
-       v  (Docling)
-  data/cleaned/*.md
-       |
-       v  (RamaLama RAG)
-  Vector Store (Qdrant)
-       |
-       v
-  Editorial Assistant (app.py)
+WordPress REST API (CommBlog + Magazine)
+              |
+              v
+   data/raw/commblog/*.json
+   data/raw/magazine/*.json
+              |
+              v  (Docling)
+   data/cleaned/commblog/*.md
+   data/cleaned/magazine/*.md
+              |
+              v  (RamaLama RAG)
+   localhost/fedora-commblog-rag
+   localhost/fedora-magazine-rag
+   localhost/fedora-editorial-rag  (combined)
+              |
+              v
+   Editorial Assistant (app.py)
 ~~~
 
 ---
@@ -78,7 +91,7 @@ WordPress REST API
 | Model      | Size    | Hardware             |
 |------------|---------|----------------------|
 | Qwen3      | 4B      | Local laptop         |
-| SmolLM2    | 1.7B    | Local laptop         |
+| Qwen3      | 1.7B    | Local laptop         |
 | Gemma 3    | 4B      | Local laptop         |
 | Granite    | 7B      | Local + GPU VM       |
 | TBD larger | 20B-30B | Remote GPU VM (GPU1) |
@@ -89,10 +102,10 @@ WordPress REST API
 
 | | |
 |---|---|
-| **Success**   | Tool validated by CommBlog editors as useful for new authors |
-| **Scope**     | CommBlog only -- single model, intentionally narrow          |
-| **Timeline**  | ~10 weeks -- iterate on chunking size and model performance  |
-| **Variables** | Chunk size · overlap · model choice · system prompt          |
+| **Success**   | Tool validated by CommBlog and Magazine editors as useful for new authors |
+| **Scope**     | CommBlog first, then Magazine if the pipeline generalizes                 |
+| **Timeline**  | ~10 weeks -- iterate on chunking size and model performance               |
+| **Variables** | Chunk size · overlap · model choice · system prompt                       |
 
 ---
 
@@ -102,16 +115,22 @@ WordPress REST API
 fedora-commblog-rag/
 ├── app.py                    # Streamlit editorial assistant GUI
 ├── data/
-│   ├── raw/                  # Articles as fetched from WordPress API
-│   ├── cleaned/              # Processed, ready-for-ingestion data
-│   └── guidelines/           # CommBlog editorial guidelines
+│   ├── raw/
+│   │   ├── commblog/         # CommBlog articles from WordPress API
+│   │   └── magazine/         # Magazine articles from WordPress API
+│   ├── cleaned/
+│   │   ├── commblog/         # Cleaned CommBlog Markdown
+│   │   └── magazine/         # Cleaned Magazine Markdown
+│   └── guidelines/
+│       ├── commblog_guidelines.md
+│       └── magazine_guidelines.md
 ├── scripts/
-│   ├── fetch_articles.py     # WordPress REST API scraper
+│   ├── fetch_articles.py     # WordPress REST API scraper (both sources)
 │   ├── ingest_docling.py     # Docling ingestion pipeline
-│   ├── clean_dataset.py      # Data cleaning & preparation
+│   ├── clean_dataset.py      # Data cleaning & quality checks
 │   └── benchmark.py          # Model benchmarking
 ├── models/
-│   └── ramalama_config/      # RamaLama RAG configs per model
+│   └── ramalama_config/      # RamaLama RAG config
 ├── notebooks/
 │   └── exploration.ipynb     # Experimentation & results analysis
 ├── docs/
@@ -133,7 +152,7 @@ fedora-commblog-rag/
 - Python 3.10+
 - [RamaLama](https://github.com/containers/ramalama) installed
 - Podman installed and running
-- Access to the Fedora Community Blog WordPress REST API
+- Access to the Fedora WordPress REST APIs (no key needed for public posts)
 
 ### Installation
 
@@ -155,7 +174,8 @@ pip install -r requirements.txt
 Create a `.env` file at the root of the project:
 
 ```env
-WP_API_BASE_URL=https://communityblog.fedoraproject.org/wp-json/wp/v2
+WP_COMMBLOG_API_URL=https://communityblog.fedoraproject.org/wp-json/wp/v2
+WP_MAGAZINE_API_URL=https://fedoramagazine.org/wp-json/wp/v2
 WP_API_KEY=      # Only needed if rate-limited
 ```
 
@@ -163,28 +183,47 @@ WP_API_KEY=      # Only needed if rate-limited
 
 ## Usage
 
-### 1. Fetch Articles
+### 1. Fetch Articles (both sources)
 
 ```bash
 python scripts/fetch_articles.py
+
+# Or fetch individually
+python scripts/fetch_articles.py --source commblog
+python scripts/fetch_articles.py --source magazine
 ```
 
 ### 2. Ingest with Docling
 
 ```bash
 python scripts/ingest_docling.py
+
+# Or individually
+python scripts/ingest_docling.py --source commblog
+python scripts/ingest_docling.py --source magazine
 ```
 
 ### 3. Clean Dataset
 
 ```bash
 python scripts/clean_dataset.py
+
+# Or individually
+python scripts/clean_dataset.py --source commblog
+python scripts/clean_dataset.py --source magazine
 ```
 
-### 4. Build the RAG Vector Store
+### 4. Build the RAG Vector Stores
 
 ```bash
-ramalama rag --chunk-size 256 data/cleaned localhost/fedora-commblog-rag
+# CommBlog only
+ramalama rag --chunk-size 256 data/cleaned/commblog localhost/fedora-commblog-rag
+
+# Magazine only
+ramalama rag --chunk-size 256 data/cleaned/magazine localhost/fedora-magazine-rag
+
+# Combined
+ramalama rag --chunk-size 256 data/cleaned localhost/fedora-editorial-rag
 ```
 
 ### 5. Run the Editorial Assistant GUI
@@ -193,16 +232,14 @@ ramalama rag --chunk-size 256 data/cleaned localhost/fedora-commblog-rag
 streamlit run app.py
 ```
 
-Opens at `http://localhost:8501`. Paste a draft article and the model
-flags whether it meets CommBlog editorial standards.
+Opens at `http://localhost:8501`. Select the publication in the sidebar,
+paste a draft article, and the model flags whether it meets editorial standards.
 
 ### 6. Benchmark Models
 
 ```bash
 python scripts/benchmark.py
 ```
-
-Tests RAG performance across Qwen, SmolLM, Gemma, and Granite.
 
 ---
 
@@ -220,7 +257,7 @@ Tests RAG performance across Qwen, SmolLM, Gemma, and Granite.
 ## Evaluation
 
 Success is measured by workshopping the tool with Fedora Community Blog
-editors to determine usefulness for new authors.
+and Fedora Magazine editors to determine usefulness for new authors.
 
 ---
 

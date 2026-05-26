@@ -1,16 +1,18 @@
 """
-app.py — Fedora CommBlog Editorial Assistant
+app.py — Fedora Editorial Assistant
 
 Interactive GUI for reviewing draft articles against the
-Fedora Community Blog editorial guidelines using RamaLama RAG.
+Fedora Community Blog and Fedora Magazine editorial guidelines
+using RamaLama RAG.
 
 Usage:
     streamlit run app.py
 
 Requirements:
     pip install streamlit
-    ramalama must be installed and the RAG store built:
-        ramalama rag --chunk-size 256 data/cleaned localhost/fedora-commblog-rag
+    ramalama must be installed and the RAG store(s) built:
+        ramalama rag --chunk-size 256 data/cleaned/commblog localhost/fedora-commblog-rag
+        ramalama rag --chunk-size 256 data/cleaned/magazine  localhost/fedora-magazine-rag
 """
 
 import subprocess
@@ -19,7 +21,7 @@ import streamlit as st
 # ── Page config ───────────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="CommBlog Editorial Assistant",
+    page_title="Fedora Editorial Assistant",
     page_icon="📝",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -34,8 +36,6 @@ st.markdown("""
 html, body, [class*="css"] {
     font-family: 'IBM Plex Sans', sans-serif;
 }
-
-/* Header */
 .main-header {
     background: linear-gradient(135deg, #003764 0%, #06b6d4 100%);
     padding: 2rem 2.5rem;
@@ -48,15 +48,20 @@ html, body, [class*="css"] {
     font-size: 1.8rem;
     font-weight: 600;
     margin: 0 0 0.4rem 0;
-    letter-spacing: -0.5px;
 }
-.main-header p {
-    font-size: 0.95rem;
-    opacity: 0.85;
-    margin: 0;
+.main-header p { font-size: 0.95rem; opacity: 0.85; margin: 0; }
+.pub-badge {
+    display: inline-block;
+    padding: 0.25rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+    margin-right: 0.5rem;
 }
-
-/* Result boxes */
+.badge-commblog { background: #dbeafe; color: #1e40af; }
+.badge-magazine  { background: #fce7f3; color: #9d174d; }
+.badge-both      { background: #f3e8ff; color: #6b21a8; }
 .result-box {
     border-radius: 10px;
     padding: 1.4rem 1.6rem;
@@ -65,37 +70,9 @@ html, body, [class*="css"] {
     line-height: 1.7;
     border-left: 5px solid;
 }
-.result-pass {
-    background: #f0fdf4;
-    border-color: #22c55e;
-    color: #14532d;
-}
-.result-fail {
-    background: #fff7ed;
-    border-color: #f97316;
-    color: #7c2d12;
-}
-.result-neutral {
-    background: #f8fafc;
-    border-color: #94a3b8;
-    color: #1e293b;
-}
-
-/* Check badges */
-.badge {
-    display: inline-block;
-    padding: 0.2rem 0.6rem;
-    border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    margin: 0.2rem 0.2rem 0.2rem 0;
-    font-family: 'IBM Plex Mono', monospace;
-}
-.badge-pass { background: #dcfce7; color: #166534; }
-.badge-fail { background: #fee2e2; color: #991b1b; }
-.badge-warn { background: #fef9c3; color: #854d0e; }
-
-/* Sidebar */
+.result-pass    { background: #f0fdf4; border-color: #22c55e; color: #14532d; }
+.result-fail    { background: #fff7ed; border-color: #f97316; color: #7c2d12; }
+.result-neutral { background: #f8fafc; border-color: #94a3b8; color: #1e293b; }
 .sidebar-section {
     background: #f1f5f9;
     border-radius: 8px;
@@ -106,63 +83,90 @@ html, body, [class*="css"] {
 .sidebar-section h4 {
     margin: 0 0 0.5rem 0;
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
-
-/* Fedora blue accent */
-.fedora-accent { color: #003764; font-weight: 600; }
-
-/* Spinner override */
-.stSpinner > div { border-top-color: #003764 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-RAG_IMAGE  = "localhost/fedora-commblog-rag"
-CORPUS_DIR = "data/cleaned"
+PUBLICATIONS = {
+    "Fedora Community Blog": {
+        "key":        "commblog",
+        "oci_image":  "localhost/fedora-commblog-rag",
+        "corpus_dir": "data/cleaned/commblog",
+        "badge":      "badge-commblog",
+    },
+    "Fedora Magazine": {
+        "key":        "magazine",
+        "oci_image":  "localhost/fedora-magazine-rag",
+        "corpus_dir": "data/cleaned/magazine",
+        "badge":      "badge-magazine",
+    },
+    "Both publications": {
+        "key":        "both",
+        "oci_image":  "localhost/fedora-editorial-rag",
+        "corpus_dir": "data/cleaned",
+        "badge":      "badge-both",
+    },
+}
 
 MODELS = {
-    "Qwen3 4B (recommended)":    "hf://Qwen/Qwen3-4B-GGUF",
-    "Qwen3 1.7B (fastest)":      "hf://Qwen/Qwen3-1.7B-GGUF",
-    "Gemma 3 4B":                "hf://ggml-org/gemma-3-4b-it-GGUF",
-    "Granite 7B (IBM)":          "hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+    "Qwen3 4B (recommended)": "hf://Qwen/Qwen3-4B-GGUF",
+    "Qwen3 1.7B (fastest)":   "hf://Qwen/Qwen3-1.7B-GGUF",
+    "Gemma 3 4B":             "hf://ggml-org/gemma-3-4b-it-GGUF",
+    "Granite 7B (IBM)":       "hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
 }
 
 REVIEW_MODES = {
-    "Full editorial review":     "full",
-    "Tone & structure only":     "tone",
-    "Technical accuracy only":   "technical",
-    "Required elements check":   "elements",
+    "Full editorial review":   "full",
+    "Tone & structure only":   "tone",
+    "Technical accuracy only": "technical",
+    "Required elements check": "elements",
 }
 
-GUIDELINES_CHECKLIST = [
-    ("Featured image",        "Does the article have a featured image?"),
-    ("Read More tag",         "Is there a <!--more--> tag after the first paragraph?"),
-    ("Tone",                  "Is the tone professional and appropriate for Fedora contributors?"),
-    ("Headers",               "Are headers used for articles over 400 words?"),
-    ("Tags",                  "Are between 3 and 6 tags used?"),
-    ("Single category",       "Does the article have a single appropriate category?"),
-    ("No hotlinked images",   "Are all images uploaded to WordPress (not hotlinked)?"),
-    ("No 'here' links",       "Is 'here' avoided as link text?"),
-    ("Important info first",  "Is the key takeaway in the first paragraph?"),
-    ("Excerpt/snippet set",   "Is the Yoast SEO snippet/excerpt set?"),
+COMMBLOG_CHECKS = [
+    ("Featured image",      "A featured image is recommended"),
+    ("Read More tag",       "<!--more--> placed after first paragraph"),
+    ("Tone",                "Professional, contributor-focused"),
+    ("Headers",             "Used for articles over 400 words"),
+    ("Tags",                "3-6 specific, strategic tags"),
+    ("Single category",     "One category (+ Events if applicable)"),
+    ("No hotlinked images", "All images uploaded to WordPress"),
+    ("No 'here' links",     "Avoid 'here' as link text"),
+    ("Key info first",      "Main takeaway in the first paragraph"),
+    ("Yoast SEO snippet",   "Excerpt/snippet set for social sharing"),
+]
+
+MAGAZINE_CHECKS = [
+    ("Featured image",      "Required — high quality, relevant"),
+    ("Read More tag",       "<!--more--> placed after first paragraph"),
+    ("Tone",                "Accessible to a wider Linux/Fedora audience"),
+    ("Technical depth",     "Appropriate technical level for the audience"),
+    ("Headers",             "Clear structure for longer articles"),
+    ("Tags & category",     "Accurate tagging for discoverability"),
+    ("License compliance",  "All images properly attributed"),
+    ("Yoast SEO snippet",   "Focus keyword and snippet set"),
 ]
 
 EXAMPLE_GOOD = """Title: F44 Election Nominations Now Open
 
-The Fedora Project is now accepting nominations for the upcoming Fedora Council and FESCo elections. If you are interested in contributing to Fedora's governance, this is your chance to get involved.
+The Fedora Project is now accepting nominations for the upcoming Fedora Council
+and FESCo elections. If you are interested in contributing to Fedora's governance,
+this is your chance to get involved.
 
 <!--more-->
 
-Nominations are open from now until [date]. Any Fedora contributor in good standing is eligible to run. To nominate yourself or someone else, visit the Fedora Elections application and follow the instructions.
+Nominations are open until [date]. Any Fedora contributor in good standing is
+eligible to run. To nominate yourself or someone else, visit the Fedora Elections
+application and follow the instructions.
 
 ## Why Run?
 
-Fedora's governing bodies shape the direction of the project. Council members set strategic goals, while FESCo members guide technical decisions. Both roles are critical to keeping Fedora healthy and moving forward.
+Fedora's governing bodies shape the direction of the project. Council members set
+strategic goals, while FESCo members guide technical decisions.
 
 ## How to Nominate
 
@@ -175,79 +179,85 @@ Questions? Ask in #fedora-elections on Matrix.
 
 EXAMPLE_BAD = """Title: Fedora and CentOS at SCaLE 23x 2026
 
-We had a great time at SCaLE this year! The Fedora and CentOS booths were busy all weekend and we talked to hundreds of people about open source.
+We had a great time at SCaLE this year! The Fedora and CentOS booths were busy
+all weekend and we talked to hundreds of people about open source.
 
-Lots of great conversations about Fedora 42 and the new features coming up. People were really excited about the improvements to the installer and the new default apps.
+Lots of great conversations about Fedora 42 and the new features coming up.
+People were really excited about the improvements to the installer.
 
-Thanks to everyone who stopped by and to all the volunteers who made it happen. See you next year!
+Thanks to everyone who stopped by and to all the volunteers who made it happen.
+See you next year!
 """
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def build_prompt(article: str, mode: str, custom_focus: str) -> str:
+def build_prompt(article: str, mode: str, pub_key: str, custom_focus: str) -> str:
+    pub_label = {
+        "commblog": "Fedora Community Blog",
+        "magazine":  "Fedora Magazine",
+        "both":      "Fedora Community Blog or Fedora Magazine",
+    }[pub_key]
+
     base = (
-        "You are an editorial assistant for the Fedora Community Blog. "
-        "Review the following draft article against the CommBlog editorial guidelines.\n\n"
+        f"You are an editorial assistant for the {pub_label}. "
+        "Review the following draft article against the editorial guidelines "
+        "for this publication.\n\n"
     )
 
     if mode == "full":
         instructions = (
-            "Check ALL of the following and report on each one:\n"
+            "Check ALL of the following and report on each:\n"
             "1. Featured image — is one included or mentioned?\n"
             "2. Read More tag — is <!--more--> placed after the first paragraph?\n"
-            "3. Tone — is it professional and appropriate for Fedora contributors?\n"
+            "3. Tone — is it appropriate for the target audience?\n"
             "4. Headers — are they used if the article is over 400 words?\n"
-            "5. Tags — are between 3 and 6 appropriate tags suggested?\n"
+            "5. Tags — are 3-6 appropriate tags suggested?\n"
             "6. Category — is a single appropriate category suggested?\n"
             "7. Link text — is 'here' avoided as link text?\n"
             "8. Key info first — is the main takeaway in the first paragraph?\n"
-            "9. Images — are any images hotlinked (not uploaded to WordPress)?\n"
-            "10. Yoast snippet — is an SEO excerpt suggested?\n\n"
-            "For each point: state PASS, FAIL, or NEEDS REVIEW, then explain briefly.\n"
-            "End with an overall verdict: READY TO PUBLISH or NEEDS REVISION.\n\n"
+            "9. Images — are any images hotlinked rather than uploaded?\n"
+            "10. SEO snippet — is an excerpt/focus keyword suggested?\n\n"
+            "For each: state PASS, FAIL, or NEEDS REVIEW, then explain briefly.\n"
+            "End with: READY TO PUBLISH or NEEDS REVISION.\n\n"
         )
     elif mode == "tone":
         instructions = (
-            "Focus only on tone and structure. Is the writing style professional "
-            "and appropriate for Fedora contributors? Are headers used correctly? "
+            "Focus only on tone and structure. Is the writing style appropriate "
+            "for the target audience? Are headers used correctly? "
             "Is the key takeaway in the first paragraph? "
             "Give specific, actionable feedback.\n\n"
         )
     elif mode == "technical":
         instructions = (
             "Focus only on technical accuracy. Are the technical claims correct "
-            "for a Fedora/Linux context? Flag anything that seems inaccurate, "
-            "outdated, or that needs a technical review.\n\n"
+            "for a Fedora/Linux context? Flag anything inaccurate or outdated.\n\n"
         )
     elif mode == "elements":
         instructions = (
             "Check only the required structural elements:\n"
-            "1. Is there a featured image?\n"
-            "2. Is there a <!--more--> Read More tag?\n"
-            "3. Is there at least one header (for articles over 400 words)?\n"
-            "4. Are 3-6 tags suggested?\n"
-            "5. Is a category assigned?\n"
+            "1. Featured image present?\n"
+            "2. <!--more--> Read More tag present?\n"
+            "3. At least one header (for articles over 400 words)?\n"
+            "4. 3-6 tags suggested?\n"
+            "5. Category assigned?\n"
             "State PASS or FAIL for each.\n\n"
         )
 
     if custom_focus.strip():
-        instructions += f"Additional focus area: {custom_focus.strip()}\n\n"
+        instructions += f"Additional focus: {custom_focus.strip()}\n\n"
 
     return base + instructions + f"--- ARTICLE ---\n\n{article.strip()}"
 
 
-def run_rag_query(model_id: str, prompt: str, use_oci: bool) -> str:
+def run_rag_query(model_id: str, prompt: str, pub: dict, use_oci: bool) -> str:
     if use_oci:
-        cmd = ["ramalama", "run", "--rag", RAG_IMAGE, model_id]
-        result = subprocess.run(
-            cmd, input=prompt, capture_output=True, text=True, timeout=300
-        )
+        cmd = ["ramalama", "run", "--rag", pub["oci_image"], model_id]
     else:
-        cmd = ["ramalama", "run", "--nocontainer", "--rag", CORPUS_DIR, model_id]
-        result = subprocess.run(
-            cmd, input=prompt, capture_output=True, text=True, timeout=300
-        )
+        cmd = ["ramalama", "run", "--nocontainer", "--rag", pub["corpus_dir"], model_id]
 
+    result = subprocess.run(
+        cmd, input=prompt, capture_output=True, text=True, timeout=300
+    )
     if result.returncode != 0:
         return f"ERROR: {result.stderr.strip()}"
     return result.stdout.strip()
@@ -271,14 +281,22 @@ def count_words(text: str) -> int:
 with st.sidebar:
     st.markdown("""
     <div style='font-family: IBM Plex Mono, monospace; font-size: 1rem;
-                font-weight: 600; color: #003764; margin-bottom: 1rem;'>
-        CommBlog RAG
+                font-weight: 600; color: #003764; margin-bottom: 1.2rem;'>
+        Fedora Editorial RAG
     </div>
     """, unsafe_allow_html=True)
 
+    st.markdown("**Publication**")
+    pub_label = st.selectbox(
+        "publication",
+        list(PUBLICATIONS.keys()),
+        label_visibility="collapsed",
+    )
+    pub = PUBLICATIONS[pub_label]
+
     st.markdown("**Model**")
     model_label = st.selectbox(
-        "Select model",
+        "model",
         list(MODELS.keys()),
         label_visibility="collapsed",
     )
@@ -286,7 +304,7 @@ with st.sidebar:
 
     st.markdown("**Review Mode**")
     review_label = st.selectbox(
-        "Select review mode",
+        "review mode",
         list(REVIEW_MODES.keys()),
         label_visibility="collapsed",
     )
@@ -302,19 +320,20 @@ with st.sidebar:
     use_oci = st.toggle(
         "Use OCI vector store",
         value=True,
-        help=f"Use the pre-built RAG image ({RAG_IMAGE}). Faster and more accurate. "
-             f"Disable to use ad-hoc mode directly against data/cleaned/.",
+        help="Use the pre-built RAG image. Disable for ad-hoc mode (slower).",
     )
 
     st.divider()
 
-    st.markdown("**Guidelines Checklist**")
+    checks = MAGAZINE_CHECKS if pub["key"] == "magazine" else COMMBLOG_CHECKS
+    pub_name = pub_label if pub["key"] != "both" else "CommBlog"
+    st.markdown(f"**{pub_name} Checklist**")
     st.markdown(
         "<div class='sidebar-section'>" +
         "".join(
             f"<div style='margin-bottom:0.4rem;'>&#x25A1; <b>{name}</b><br>"
             f"<span style='color:#64748b;font-size:0.8rem'>{desc}</span></div>"
-            for name, desc in GUIDELINES_CHECKLIST
+            for name, desc in checks
         ) +
         "</div>",
         unsafe_allow_html=True,
@@ -322,19 +341,21 @@ with st.sidebar:
 
     st.divider()
     st.caption(
-        "RAG image: `localhost/fedora-commblog-rag`  \n"
-        "Corpus: `data/cleaned/`  \n"
-        "Guidelines: `data/guidelines/commblog_guidelines.md`"
+        f"OCI image: `{pub['oci_image']}`  \n"
+        f"Corpus: `{pub['corpus_dir']}`"
     )
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-st.markdown("""
+badge_html = f"<span class='pub-badge {pub['badge']}'>{pub_label}</span>"
+
+st.markdown(f"""
 <div class="main-header">
-    <h1>Fedora CommBlog Editorial Assistant</h1>
+    <h1>Fedora Editorial Assistant</h1>
     <p>
-        Paste a draft article below. The RAG model will review it against the
-        Fedora Community Blog editorial guidelines and flag any issues.
+        {badge_html}
+        Paste a draft article and the RAG model will review it against
+        the Fedora editorial guidelines and flag any issues.
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -354,22 +375,16 @@ with col1:
             height=420,
             placeholder=(
                 "Paste your draft article here — include the title, body, "
-                "and any metadata you have (tags, category, excerpt)..."
+                "and any metadata (tags, category, excerpt)..."
             ),
             label_visibility="collapsed",
         )
 
     with tab_good:
-        st.caption(
-            "Known good article — should pass all editorial checks.  \n"
-            "[F44 Election Nominations Now Open]"
-            "(https://communityblog.fedoraproject.org/f44-election-nominations-now-open/)"
-        )
-        if st.button("Load good example", use_container_width=True):
-            st.session_state["loaded_example"] = EXAMPLE_GOOD
+        st.caption("Known good article — should pass all editorial checks.")
         article_input_good = st.text_area(
             "good example",
-            value=st.session_state.get("loaded_example", EXAMPLE_GOOD),
+            value=EXAMPLE_GOOD,
             height=360,
             label_visibility="collapsed",
         )
@@ -377,9 +392,7 @@ with col1:
 
     with tab_bad:
         st.caption(
-            "Known bad article — missing featured image and `<!--more-->` tag.  \n"
-            "[Fedora and CentOS at SCaLE 23x]"
-            "(https://communityblog.fedoraproject.org/fedora-and-centos-scale-23x-2026/)"
+            "Known bad article — missing featured image and `<!--more-->` tag."
         )
         article_input_bad = st.text_area(
             "bad example",
@@ -387,8 +400,7 @@ with col1:
             height=360,
             label_visibility="collapsed",
         )
-        if tab_bad:
-            article_input = article_input_bad
+        article_input = article_input_bad
 
     word_count = count_words(article_input) if article_input.strip() else 0
     st.caption(f"Word count: **{word_count}** words")
@@ -413,30 +425,20 @@ with col2:
     else:
         response  = st.session_state["last_response"]
         verdict   = st.session_state["last_verdict"]
-        css_class = {
-            "pass":    "result-pass",
-            "fail":    "result-fail",
-            "neutral": "result-neutral",
-        }[verdict]
-        verdict_label = {
-            "pass":    "READY TO PUBLISH",
-            "fail":    "NEEDS REVISION",
-            "neutral": "REVIEW RESPONSE",
-        }[verdict]
-
+        css_class = {"pass": "result-pass", "fail": "result-fail", "neutral": "result-neutral"}[verdict]
+        label     = {"pass": "READY TO PUBLISH", "fail": "NEEDS REVISION", "neutral": "REVIEW RESPONSE"}[verdict]
         st.markdown(
             f"<div class='result-box {css_class}'>"
-            f"<strong>{verdict_label}</strong><br><br>"
+            f"<strong>{label}</strong><br><br>"
             f"{response.replace(chr(10), '<br>')}"
             f"</div>",
             unsafe_allow_html=True,
         )
-
         if verdict != "neutral":
             st.download_button(
                 label="Download review as .txt",
                 data=response,
-                file_name="commblog_review.txt",
+                file_name="editorial_review.txt",
                 mime="text/plain",
                 use_container_width=True,
             )
@@ -444,40 +446,29 @@ with col2:
 # ── Run review ────────────────────────────────────────────────────────────────
 
 if run_btn and article_input.strip():
-    prompt = build_prompt(article_input, review_mode, custom_focus)
-
+    prompt = build_prompt(article_input, review_mode, pub["key"], custom_focus)
     with col2:
         with st.spinner(f"Reviewing with {model_label}..."):
-            response = run_rag_query(model_id, prompt, use_oci)
+            response = run_rag_query(model_id, prompt, pub, use_oci)
 
         verdict = detect_verdict(response)
         st.session_state["last_response"] = response
         st.session_state["last_verdict"]  = verdict
 
-        css_class = {
-            "pass":    "result-pass",
-            "fail":    "result-fail",
-            "neutral": "result-neutral",
-        }[verdict]
-        verdict_label = {
-            "pass":    "READY TO PUBLISH",
-            "fail":    "NEEDS REVISION",
-            "neutral": "REVIEW RESPONSE",
-        }[verdict]
-
+        css_class = {"pass": "result-pass", "fail": "result-fail", "neutral": "result-neutral"}[verdict]
+        label     = {"pass": "READY TO PUBLISH", "fail": "NEEDS REVISION", "neutral": "REVIEW RESPONSE"}[verdict]
         st.markdown(
             f"<div class='result-box {css_class}'>"
-            f"<strong>{verdict_label}</strong><br><br>"
+            f"<strong>{label}</strong><br><br>"
             f"{response.replace(chr(10), '<br>')}"
             f"</div>",
             unsafe_allow_html=True,
         )
-
         if verdict != "neutral":
             st.download_button(
                 label="Download review as .txt",
                 data=response,
-                file_name="commblog_review.txt",
+                file_name="editorial_review.txt",
                 mime="text/plain",
                 use_container_width=True,
             )
@@ -486,7 +477,7 @@ if run_btn and article_input.strip():
 
 st.divider()
 st.caption(
-    "Fedora CommBlog RAG — Outreachy mini-project · "
+    "Fedora Editorial RAG — Outreachy mini-project · "
     "[GitHub](https://github.com/gtfrans2re/fedora-commblog-rag) · "
     "Apache 2.0"
 )
