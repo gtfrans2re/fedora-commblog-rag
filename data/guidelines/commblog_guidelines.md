@@ -1,6 +1,6 @@
 ---
 title: "Fedora Community Blog — Article Guidelines"
-source: https://docs.fedoraproject.org/en-US/commops/commblog/article-guidelines/
+source: [https://docs.fedoraproject.org/en-US/commops/commblog/article-guidelines/](https://communityblog.fedoraproject.org/editor-guidelines/)
 updated: 2022-01-20
 ---
 
