@@ -76,9 +76,9 @@ WordPress REST API (CommBlog + Magazine)
    data/cleaned/magazine/*.md
               |
               v  (RamaLama RAG)
-   localhost/fedora-commblog-rag
-   localhost/fedora-magazine-rag
-   localhost/fedora-editorial-rag  (combined)
+   quay.io/gtfrans2re/fedora-commblog-rag
+   quay.io/gtfrans2re/fedora-magazine-rag
+   quay.io/gtfrans2re/fedora-editorial-rag  (combined)
               |
               v
    Editorial Assistant (app.py)
@@ -217,16 +217,29 @@ python scripts/clean_dataset.py --source magazine
 
 ```bash
 # CommBlog only
-ramalama rag --chunk-size 256 data/cleaned/commblog localhost/fedora-commblog-rag
+ramalama rag --chunk-size 200 data/cleaned/commblog quay.io/gtfrans2re/fedora-commblog-rag
 
 # Magazine only
-ramalama rag --chunk-size 256 data/cleaned/magazine localhost/fedora-magazine-rag
+ramalama rag --chunk-size 200 data/cleaned/magazine quay.io/gtfrans2re/fedora-magazine-rag
 
 # Combined
-ramalama rag --chunk-size 256 data/cleaned localhost/fedora-editorial-rag
+ramalama rag --chunk-size 200 data/cleaned quay.io/gtfrans2re/fedora-editorial-rag
 ```
 
-### 5. Run the Editorial Assistant GUI
+> **Note:** `--chunk-size 200` keeps all chunks safely under the embedder's
+> 512-token batch limit. The default of 400 causes overflow errors on longer
+> articles and guidelines files.
+
+### 5. Push to Quay (after building)
+
+```bash
+podman login quay.io
+podman push quay.io/gtfrans2re/fedora-commblog-rag
+podman push quay.io/gtfrans2re/fedora-magazine-rag
+podman push quay.io/gtfrans2re/fedora-editorial-rag
+```
+
+### 6. Run the Editorial Assistant GUI
 
 ```bash
 streamlit run app.py
@@ -235,11 +248,23 @@ streamlit run app.py
 Opens at `http://localhost:8501`. Select the publication in the sidebar,
 paste a draft article, and the model flags whether it meets editorial standards.
 
-### 6. Benchmark Models
+### 7. Benchmark Models
 
 ```bash
 python scripts/benchmark.py
 ```
+
+---
+
+## Quay Repositories
+
+The pre-built RAG vector stores are publicly available on Quay.io:
+
+| Image | Description |
+|-------|-------------|
+| [quay.io/gtfrans2re/fedora-commblog-rag](https://quay.io/gtfrans2re/fedora-commblog-rag) | CommBlog corpus |
+| [quay.io/gtfrans2re/fedora-magazine-rag](https://quay.io/gtfrans2re/fedora-magazine-rag) | Magazine corpus |
+| [quay.io/gtfrans2re/fedora-editorial-rag](https://quay.io/gtfrans2re/fedora-editorial-rag) | Combined corpus |
 
 ---
 
