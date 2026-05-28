@@ -9,11 +9,11 @@ data:
     commblog:
       corpus_dir:    "data/cleaned/commblog"
       guidelines:    "data/guidelines/commblog_guidelines.md"
-      oci_image:     "localhost/fedora-commblog-rag"
+      oci_image:     "quay.io/gtfrans2re/fedora-commblog-rag"
     magazine:
       corpus_dir:    "data/cleaned/magazine"
       guidelines:    "data/guidelines/magazine_guidelines.md"
-      oci_image:     "localhost/fedora-magazine-rag"
+      oci_image:     "quay.io/gtfrans2re/fedora-magazine-rag"
     both:
       corpus_dirs:
         - "data/cleaned/commblog"
@@ -21,7 +21,7 @@ data:
       guidelines:
         - "data/guidelines/commblog_guidelines.md"
         - "data/guidelines/magazine_guidelines.md"
-      oci_image:     "localhost/fedora-editorial-rag"
+      oci_image:     "quay.io/gtfrans2re/fedora-editorial-rag"
   file_types:
     - "*.md"
 

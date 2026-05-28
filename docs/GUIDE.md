@@ -357,25 +357,25 @@ ramalama list
 ## Step 8 — Build the RAG Vector Stores
 
 Build a separate OCI image for each publication, plus one combined image.
-Always use the `localhost/` prefix — `quay.io/` tries to pull from the
+Always use the `quay.io/gtfrans2re/` prefix — the images are hosted on Quay.
 internet and will fail.
 
 ### 8.1 CommBlog vector store
 
 ```bash
-ramalama rag --chunk-size 256 data/cleaned/commblog localhost/fedora-commblog-rag
+ramalama rag --chunk-size 256 data/cleaned/commblog quay.io/gtfrans2re/fedora-commblog-rag
 ```
 
 ### 8.2 Magazine vector store
 
 ```bash
-ramalama rag --chunk-size 256 data/cleaned/magazine localhost/fedora-magazine-rag
+ramalama rag --chunk-size 256 data/cleaned/magazine quay.io/gtfrans2re/fedora-magazine-rag
 ```
 
 ### 8.3 Combined vector store (both publications)
 
 ```bash
-ramalama rag --chunk-size 256 data/cleaned localhost/fedora-editorial-rag
+ramalama rag --chunk-size 256 data/cleaned quay.io/gtfrans2re/fedora-editorial-rag
 ```
 
 > **Why `--chunk-size 256`?** The default (400 tokens) occasionally produces
@@ -391,9 +391,9 @@ podman images | grep fedora
 Expected output:
 
 ~~~
-localhost/fedora-commblog-rag    latest   <id>   X min ago   XXX MB
-localhost/fedora-magazine-rag    latest   <id>   X min ago   XXX MB
-localhost/fedora-editorial-rag   latest   <id>   X min ago   XXX MB
+quay.io/gtfrans2re/fedora-commblog-rag    latest   <id>   X min ago   XXX MB
+quay.io/gtfrans2re/fedora-magazine-rag    latest   <id>   X min ago   XXX MB
+quay.io/gtfrans2re/fedora-editorial-rag   latest   <id>   X min ago   XXX MB
 ~~~
 
 ### Troubleshooting
@@ -401,7 +401,7 @@ localhost/fedora-editorial-rag   latest   <id>   X min ago   XXX MB
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `input (N tokens) is too large` | Chunk too big | Lower to `--chunk-size 200` |
-| `image does not exist` on run | Wrong prefix | Always use `localhost/` |
+| `image does not exist` on run | Image not pushed yet | Run `podman push` to Quay first |
 | Podman not running | Daemon inactive | `systemctl --user start podman` |
 
 ---
@@ -413,13 +413,13 @@ Quick sanity check before running the full benchmark.
 ### CommBlog
 
 ```bash
-ramalama run --rag localhost/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
 ```
 
 ### Magazine
 
 ```bash
-ramalama run --rag localhost/fedora-magazine-rag hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-magazine-rag hf://Qwen/Qwen3-4B-GGUF
 ```
 
 Each opens an interactive prompt. Type a test query:
@@ -462,10 +462,10 @@ https://communityblog.fedoraproject.org/community-update-week-20/
 
 ```bash
 # CommBlog session
-ramalama run --rag localhost/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
 
 # Magazine session
-ramalama run --rag localhost/fedora-magazine-rag hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-magazine-rag hf://Qwen/Qwen3-4B-GGUF
 ```
 
 Paste one of these prompts at the interactive prompt:
@@ -541,8 +541,8 @@ Sections:
 
 ```bash
 # Rebuild with a different chunk size
-ramalama rag --chunk-size 200 data/cleaned/commblog localhost/fedora-commblog-rag
-ramalama rag --chunk-size 200 data/cleaned/magazine  localhost/fedora-magazine-rag
+ramalama rag --chunk-size 200 data/cleaned/commblog quay.io/gtfrans2re/fedora-commblog-rag
+ramalama rag --chunk-size 200 data/cleaned/magazine  quay.io/gtfrans2re/fedora-magazine-rag
 ```
 
 Try values: `128`, `200`, `256`, `384`. Re-test after each rebuild.
@@ -584,9 +584,9 @@ ramalama pull hf://ggml-org/gemma-3-4b-it-GGUF
 ramalama pull hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
 
 # 5. Build RAG vector stores
-ramalama rag --chunk-size 256 data/cleaned/commblog localhost/fedora-commblog-rag
-ramalama rag --chunk-size 256 data/cleaned/magazine  localhost/fedora-magazine-rag
-ramalama rag --chunk-size 256 data/cleaned           localhost/fedora-editorial-rag
+ramalama rag --chunk-size 256 data/cleaned/commblog quay.io/gtfrans2re/fedora-commblog-rag
+ramalama rag --chunk-size 256 data/cleaned/magazine  quay.io/gtfrans2re/fedora-magazine-rag
+ramalama rag --chunk-size 256 data/cleaned           quay.io/gtfrans2re/fedora-editorial-rag
 
 # 6. Verify images
 podman images | grep fedora
@@ -595,8 +595,8 @@ podman images | grep fedora
 streamlit run app.py
 
 # 8. Or use terminal sessions directly
-ramalama run --rag localhost/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
-ramalama run --rag localhost/fedora-magazine-rag  hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-magazine-rag  hf://Qwen/Qwen3-4B-GGUF
 
 # 9. Full benchmark
 python scripts/benchmark.py
@@ -627,6 +627,6 @@ git push
 | GitHub Issues | Bug reports, feature requests |
 | Justin Wheeler | WordPress API key, RamaLama questions |
 | Dominik Kawka | GPU1 VM access, tech stack advice |
-| Carol Chen | Sprint process, scope22 questions |
+| Carol Chen | Sprint process, scope questions |
 | Michal Konecny | CommBlog editorial feedback |
 | Fedora Magazine editors | Magazine editorial feedback |

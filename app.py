@@ -11,8 +11,8 @@ Usage:
 Requirements:
     pip install streamlit
     ramalama must be installed and the RAG store(s) built:
-        ramalama rag --chunk-size 256 data/cleaned/commblog localhost/fedora-commblog-rag
-        ramalama rag --chunk-size 256 data/cleaned/magazine  localhost/fedora-magazine-rag
+        ramalama rag --chunk-size 256 data/cleaned/commblog quay.io/gtfrans2re/fedora-commblog-rag
+        ramalama rag --chunk-size 256 data/cleaned/magazine  quay.io/gtfrans2re/fedora-magazine-rag
 """
 
 import subprocess
@@ -95,19 +95,19 @@ html, body, [class*="css"] {
 PUBLICATIONS = {
     "Fedora Community Blog": {
         "key":        "commblog",
-        "oci_image":  "localhost/fedora-commblog-rag",
+        "oci_image":  "quay.io/gtfrans2re/fedora-commblog-rag",
         "corpus_dir": "data/cleaned/commblog",
         "badge":      "badge-commblog",
     },
     "Fedora Magazine": {
         "key":        "magazine",
-        "oci_image":  "localhost/fedora-magazine-rag",
+        "oci_image":  "quay.io/gtfrans2re/fedora-magazine-rag",
         "corpus_dir": "data/cleaned/magazine",
         "badge":      "badge-magazine",
     },
     "Both publications": {
         "key":        "both",
-        "oci_image":  "localhost/fedora-editorial-rag",
+        "oci_image":  "quay.io/gtfrans2re/fedora-editorial-rag",
         "corpus_dir": "data/cleaned",
         "badge":      "badge-both",
     },
