@@ -627,6 +627,6 @@ git push
 | GitHub Issues | Bug reports, feature requests |
 | Justin Wheeler | WordPress API key, RamaLama questions |
 | Dominik Kawka | GPU1 VM access, tech stack advice |
-| Carol Chen | Sprint process, scope questions |
+| Carol Chen | Sprint process, scope22 questions |
 | Michal Konecny | CommBlog editorial feedback |
 | Fedora Magazine editors | Magazine editorial feedback |
