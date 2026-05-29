@@ -337,15 +337,13 @@ for c in checks:
 Use HuggingFace format — `ollama://` is deprecated in RamaLama.
 
 ```bash
-ramalama pull hf://Qwen/Qwen3-4B-GGUF
-ramalama pull hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF
-ramalama pull hf://ggml-org/gemma-3-4b-it-GGUF
-ramalama pull hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
+ramalama pull hf://bartowski/google_gemma-4-E4B-it-GGUF
+ramalama pull hf://ibm-granite/granite-4.0-micro-GGUF
 ```
 
 > **Hardware note:**
 > - 4B–8B models: ~4–8 GB RAM/VRAM — fine on most laptops
-> - Start with `hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF` if memory is tight
+> - Start with `hf://ibm-granite/granite-4.0-micro-GGUF` (3B) if memory is tight
 > - For 20B+ models, use the GPU1 VM (coordinate with Dominik Kawka)
 
 ```bash
@@ -413,13 +411,13 @@ Quick sanity check before running the full benchmark.
 ### CommBlog
 
 ```bash
-ramalama run --rag quay.io/gtfrans2re/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-commblog-rag hf://bartowski/google_gemma-4-E4B-it-GGUF
 ```
 
 ### Magazine
 
 ```bash
-ramalama run --rag quay.io/gtfrans2re/fedora-magazine-rag hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-magazine-rag hf://bartowski/google_gemma-4-E4B-it-GGUF
 ```
 
 Each opens an interactive prompt. Type a test query:
@@ -462,10 +460,10 @@ https://communityblog.fedoraproject.org/community-update-week-20/
 
 ```bash
 # CommBlog session
-ramalama run --rag quay.io/gtfrans2re/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-commblog-rag hf://bartowski/google_gemma-4-E4B-it-GGUF
 
 # Magazine session
-ramalama run --rag quay.io/gtfrans2re/fedora-magazine-rag hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-magazine-rag hf://bartowski/google_gemma-4-E4B-it-GGUF
 ```
 
 Paste one of these prompts at the interactive prompt:
@@ -578,10 +576,8 @@ python scripts/ingest_docling.py
 python scripts/clean_dataset.py
 
 # 4. Pull models (first time only)
-ramalama pull hf://Qwen/Qwen3-4B-GGUF
-ramalama pull hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF
-ramalama pull hf://ggml-org/gemma-3-4b-it-GGUF
-ramalama pull hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
+ramalama pull hf://bartowski/google_gemma-4-E4B-it-GGUF
+ramalama pull hf://ibm-granite/granite-4.0-micro-GGUF
 
 # 5. Build RAG vector stores
 ramalama rag --chunk-size 200 data/cleaned/commblog quay.io/gtfrans2re/fedora-commblog-rag
@@ -595,8 +591,8 @@ podman images | grep fedora
 streamlit run app.py
 
 # 8. Or use terminal sessions directly
-ramalama run --rag quay.io/gtfrans2re/fedora-commblog-rag hf://Qwen/Qwen3-4B-GGUF
-ramalama run --rag quay.io/gtfrans2re/fedora-magazine-rag  hf://Qwen/Qwen3-4B-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-commblog-rag hf://bartowski/google_gemma-4-E4B-it-GGUF
+ramalama run --rag quay.io/gtfrans2re/fedora-magazine-rag  hf://bartowski/google_gemma-4-E4B-it-GGUF
 
 # 9. Full benchmark
 python scripts/benchmark.py

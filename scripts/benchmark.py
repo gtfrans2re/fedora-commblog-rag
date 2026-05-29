@@ -2,10 +2,8 @@
 benchmark.py
 
 Benchmarks RAG performance across supported models:
-    - Qwen 2.5 7B
-    - SmolLM2 1.7B
-    - Gemma 3 4B
-    - Granite 3.3 8B
+    - Gemma 4 E4B
+    - Granite 4 Micro (IBM)
 
 For each model, runs a set of editorial review test prompts against the
 cleaned CommBlog corpus and records: latency, response quality scores
@@ -34,10 +32,8 @@ CONFIG_PATH  = "models/ramalama_config/ramalama_rag.yaml"
 CLEANED_DIR  = Path("data/cleaned")
 
 MODELS = [
-    {"name": "hf://Qwen/Qwen3-4B-GGUF",                                   "label": "Qwen3 4B"},
-    {"name": "hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF",             "label": "SmolLM2 1.7B"},
-    {"name": "hf://ggml-org/gemma-3-4b-it-GGUF",                          "label": "Gemma 3 4B"},
-    {"name": "hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf", "label": "Granite 7B"},
+    {"name": "hf://bartowski/google_gemma-4-E4B-it-GGUF", "label": "Gemma 4 E4B"},
+    {"name": "hf://ibm-granite/granite-4.0-micro-GGUF",   "label": "Granite 4 Micro"},
 ]
 
 # Test prompts: (prompt, reference_answer_keywords)

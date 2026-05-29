@@ -114,10 +114,8 @@ PUBLICATIONS = {
 }
 
 MODELS = {
-    "Qwen3 4B (recommended)": "hf://Qwen/Qwen3-4B-GGUF",
-    "SmolLM2 1.7B (fastest)": "hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF",
-    "Gemma 3 4B":             "hf://ggml-org/gemma-3-4b-it-GGUF",
-    "Granite 7B (IBM)":       "hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
+    "Gemma 4 E4B (recommended)": "hf://bartowski/google_gemma-4-E4B-it-GGUF",
+    "Granite 4 Micro (IBM)":     "hf://ibm-granite/granite-4.0-micro-GGUF",
 }
 
 REVIEW_MODES = {
@@ -441,6 +439,7 @@ with col2:
                 file_name="editorial_review.txt",
                 mime="text/plain",
                 use_container_width=True,
+                key="download_persisted",
             )
 
 # ── Run review ────────────────────────────────────────────────────────────────
@@ -471,6 +470,7 @@ if run_btn and article_input.strip():
                 file_name="editorial_review.txt",
                 mime="text/plain",
                 use_container_width=True,
+                key="download_fresh",
             )
 
 # ── Footer ────────────────────────────────────────────────────────────────────

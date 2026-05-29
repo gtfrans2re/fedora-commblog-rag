@@ -119,12 +119,17 @@ WordPress REST API (CommBlog + Magazine)
 
 ### Models Benchmarked
 
-| Model    | Size    | Hardware             |
-|----------|---------|----------------------|
-| Qwen3    | 4B      | Local laptop         |
-| SmolLM2  | 1.7B    | Local laptop         |
-| Gemma 3  | 4B      | Local laptop         |
-| Granite  | 7B      | Local + GPU VM       |
+| Model           | Size    | Hardware     |
+|-----------------|---------|--------------|
+| Gemma 4 E4B     | ~4B     | Local laptop |
+| Granite 4 Micro | 3B      | Local laptop |
+
+> **Note:** The project initially benchmarked four models (Qwen3 4B, SmolLM2
+> 1.7B, Gemma 3 4B, Granite 7B). Following mentor guidance, the lineup was
+> narrowed to the newer-generation **Gemma 4** and **Granite 4** models, which
+> are far more memory-efficient and produce better results than their
+> predecessors. Larger models will be revisited once dedicated GPU server
+> hardware is provisioned.
 
 ---
 
@@ -302,10 +307,8 @@ The pre-built RAG vector stores are publicly available on Quay.io:
 
 | Model | Size | Notes |
 |-------|------|-------|
-| Qwen3 4B | 4B | Fast, recommended default |
-| SmolLM2 1.7B | 1.7B | Lightweight, good for local |
-| Gemma 3 4B | 4B | Strong general performance |
-| Granite 7B (IBM) | 7B | Open weights, Fedora-friendly |
+| Gemma 4 E4B | ~4B | Recommended default; efficient, runs well locally |
+| Granite 4 Micro (IBM) | 3B | Hybrid Mamba arch, low memory, Fedora-friendly |
 
 ---
 

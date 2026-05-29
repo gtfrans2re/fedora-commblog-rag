@@ -66,11 +66,7 @@ generation:
 
 # ── Models ────────────────────────────────────────────────────────────────────
 models:
-  - name:  "hf://Qwen/Qwen3-4B-GGUF"
-    label: "Qwen3 4B"
-  - name:  "hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF"
-    label: "SmolLM2 1.7B"
-  - name:  "hf://ggml-org/gemma-3-4b-it-GGUF"
-    label: "Gemma 3 4B"
-  - name:  "hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf"
-    label: "Granite 7B"
+  - name:  "hf://bartowski/google_gemma-4-E4B-it-GGUF"
+    label: "Gemma 4 E4B"
+  - name:  "hf://ibm-granite/granite-4.0-micro-GGUF"
+    label: "Granite 4 Micro"
