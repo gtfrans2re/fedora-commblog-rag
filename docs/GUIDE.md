@@ -338,14 +338,14 @@ Use HuggingFace format — `ollama://` is deprecated in RamaLama.
 
 ```bash
 ramalama pull hf://Qwen/Qwen3-4B-GGUF
-ramalama pull hf://Qwen/Qwen3-1.7B-GGUF
+ramalama pull hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF
 ramalama pull hf://ggml-org/gemma-3-4b-it-GGUF
 ramalama pull hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
 ```
 
 > **Hardware note:**
 > - 4B–8B models: ~4–8 GB RAM/VRAM — fine on most laptops
-> - Start with `hf://Qwen/Qwen3-1.7B-GGUF` if memory is tight
+> - Start with `hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF` if memory is tight
 > - For 20B+ models, use the GPU1 VM (coordinate with Dominik Kawka)
 
 ```bash
@@ -363,22 +363,22 @@ internet and will fail.
 ### 8.1 CommBlog vector store
 
 ```bash
-ramalama rag --chunk-size 256 data/cleaned/commblog quay.io/gtfrans2re/fedora-commblog-rag
+ramalama rag --chunk-size 200 data/cleaned/commblog quay.io/gtfrans2re/fedora-commblog-rag
 ```
 
 ### 8.2 Magazine vector store
 
 ```bash
-ramalama rag --chunk-size 256 data/cleaned/magazine quay.io/gtfrans2re/fedora-magazine-rag
+ramalama rag --chunk-size 200 data/cleaned/magazine quay.io/gtfrans2re/fedora-magazine-rag
 ```
 
 ### 8.3 Combined vector store (both publications)
 
 ```bash
-ramalama rag --chunk-size 256 data/cleaned quay.io/gtfrans2re/fedora-editorial-rag
+ramalama rag --chunk-size 200 data/cleaned quay.io/gtfrans2re/fedora-editorial-rag
 ```
 
-> **Why `--chunk-size 256`?** The default (400 tokens) occasionally produces
+> **Why `--chunk-size 200`?** The default (400 tokens) occasionally produces
 > chunks exceeding the embedder's 512-token batch limit, crashing the build.
 > 256 keeps all chunks safely within the limit.
 
@@ -400,7 +400,7 @@ quay.io/gtfrans2re/fedora-editorial-rag   latest   <id>   X min ago   XXX MB
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `input (N tokens) is too large` | Chunk too big | Lower to `--chunk-size 200` |
+| `input (N tokens) is too large` | Chunk too big | Lower further, e.g. `--chunk-size 150` |
 | `image does not exist` on run | Image not pushed yet | Run `podman push` to Quay first |
 | Podman not running | Daemon inactive | `systemctl --user start podman` |
 
@@ -579,14 +579,14 @@ python scripts/clean_dataset.py
 
 # 4. Pull models (first time only)
 ramalama pull hf://Qwen/Qwen3-4B-GGUF
-ramalama pull hf://Qwen/Qwen3-1.7B-GGUF
+ramalama pull hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF
 ramalama pull hf://ggml-org/gemma-3-4b-it-GGUF
 ramalama pull hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf
 
 # 5. Build RAG vector stores
-ramalama rag --chunk-size 256 data/cleaned/commblog quay.io/gtfrans2re/fedora-commblog-rag
-ramalama rag --chunk-size 256 data/cleaned/magazine  quay.io/gtfrans2re/fedora-magazine-rag
-ramalama rag --chunk-size 256 data/cleaned           quay.io/gtfrans2re/fedora-editorial-rag
+ramalama rag --chunk-size 200 data/cleaned/commblog quay.io/gtfrans2re/fedora-commblog-rag
+ramalama rag --chunk-size 200 data/cleaned/magazine  quay.io/gtfrans2re/fedora-magazine-rag
+ramalama rag --chunk-size 200 data/cleaned           quay.io/gtfrans2re/fedora-editorial-rag
 
 # 6. Verify images
 podman images | grep fedora

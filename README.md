@@ -44,6 +44,7 @@ meets editorial standards — tone, structure, topic scope, and technical accura
 - [Evaluation](#evaluation)
 - [Contributing](#contributing)
 - [License](#license)
+- [Attribution](#attribution)
 
 ---
 
@@ -325,3 +326,14 @@ with the Fedora Project. Contributions, feedback, and suggestions are welcome!
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE) for details.
+
+---
+
+## Attribution
+
+Assisted-by: Claude (Anthropic)
+
+Portions of this project's code, documentation, and data processing were
+developed with AI assistance. All technical decisions, testing, debugging, and
+validation were carried out by the author in accordance with the Fedora
+[Policy on AI-Assisted Contributions](https://docs.fedoraproject.org/en-US/council/policy/ai-contribution-policy/).
