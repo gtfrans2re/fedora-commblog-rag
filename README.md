@@ -118,13 +118,12 @@ WordPress REST API (CommBlog + Magazine)
 
 ### Models Benchmarked
 
-| Model      | Size    | Hardware             |
-|------------|---------|----------------------|
-| Qwen3      | 4B      | Local laptop         |
-| Qwen3      | 1.7B    | Local laptop         |
-| Gemma 3    | 4B      | Local laptop         |
-| Granite    | 7B      | Local + GPU VM       |
-| TBD larger | 20B-30B | Remote GPU VM (GPU1) |
+| Model    | Size    | Hardware             |
+|----------|---------|----------------------|
+| Qwen3    | 4B      | Local laptop         |
+| SmolLM2  | 1.7B    | Local laptop         |
+| Gemma 3  | 4B      | Local laptop         |
+| Granite  | 7B      | Local + GPU VM       |
 
 ---
 
@@ -303,7 +302,7 @@ The pre-built RAG vector stores are publicly available on Quay.io:
 | Model | Size | Notes |
 |-------|------|-------|
 | Qwen3 4B | 4B | Fast, recommended default |
-| Qwen3 1.7B | 1.7B | Lightweight, good for local |
+| SmolLM2 1.7B | 1.7B | Lightweight, good for local |
 | Gemma 3 4B | 4B | Strong general performance |
 | Granite 7B (IBM) | 7B | Open weights, Fedora-friendly |
 

@@ -34,10 +34,10 @@ CONFIG_PATH  = "models/ramalama_config/ramalama_rag.yaml"
 CLEANED_DIR  = Path("data/cleaned")
 
 MODELS = [
-    {"name": "qwen2.5:7b",    "label": "Qwen 2.5 7B"},
-    {"name": "smollm2:1.7b",  "label": "SmolLM2 1.7B"},
-    {"name": "gemma3:4b",     "label": "Gemma 3 4B"},
-    {"name": "granite3.3:8b", "label": "Granite 3.3 8B"},
+    {"name": "hf://Qwen/Qwen3-4B-GGUF",                                   "label": "Qwen3 4B"},
+    {"name": "hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF",             "label": "SmolLM2 1.7B"},
+    {"name": "hf://ggml-org/gemma-3-4b-it-GGUF",                          "label": "Gemma 3 4B"},
+    {"name": "hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf", "label": "Granite 7B"},
 ]
 
 # Test prompts: (prompt, reference_answer_keywords)
@@ -207,7 +207,7 @@ def main():
             score = score_response(response, test["reference_keywords"])
             is_error = response.startswith("ERROR")
 
-            print(f"{'Bad' if is_error else 'Good'} "
+            print(f"{'❌' if is_error else '✅'} "
                   f"({latency:.1f}s, score={score:.3f})")
 
             model_result["prompts"].append({
@@ -234,14 +234,14 @@ def main():
     json_path = RESULTS_DIR / f"benchmark_{timestamp}.json"
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(all_results, f, ensure_ascii=False, indent=2)
-    print(f"\n Full results saved → {json_path}")
+    print(f"\n📄 Full results saved → {json_path}")
 
     # Save Markdown summary
     md_path = RESULTS_DIR / "benchmark_summary.md"
     md_path.write_text(build_markdown_summary(all_results), encoding="utf-8")
-    print(f" Summary table saved → {md_path}")
+    print(f"📊 Summary table saved → {md_path}")
 
-    print(f"\n Benchmark complete for {len(MODELS)} models × {len(TEST_PROMPTS)} prompts.")
+    print(f"\n✅ Benchmark complete for {len(MODELS)} models × {len(TEST_PROMPTS)} prompts.")
 
 
 if __name__ == "__main__":

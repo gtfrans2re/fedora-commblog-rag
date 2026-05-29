@@ -115,7 +115,7 @@ PUBLICATIONS = {
 
 MODELS = {
     "Qwen3 4B (recommended)": "hf://Qwen/Qwen3-4B-GGUF",
-    "Qwen3 1.7B (fastest)":   "hf://Qwen/Qwen3-1.7B-GGUF",
+    "SmolLM2 1.7B (fastest)": "hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF",
     "Gemma 3 4B":             "hf://ggml-org/gemma-3-4b-it-GGUF",
     "Granite 7B (IBM)":       "hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf",
 }

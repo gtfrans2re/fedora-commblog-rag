@@ -68,8 +68,8 @@ generation:
 models:
   - name:  "hf://Qwen/Qwen3-4B-GGUF"
     label: "Qwen3 4B"
-  - name:  "hf://Qwen/Qwen3-1.7B-GGUF"
-    label: "Qwen3 1.7B"
+  - name:  "hf://HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF"
+    label: "SmolLM2 1.7B"
   - name:  "hf://ggml-org/gemma-3-4b-it-GGUF"
     label: "Gemma 3 4B"
   - name:  "hf://instructlab/granite-7b-lab-GGUF/granite-7b-lab-Q4_K_M.gguf"
