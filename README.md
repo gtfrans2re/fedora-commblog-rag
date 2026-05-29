@@ -17,6 +17,36 @@ meets editorial standards — tone, structure, topic scope, and technical accura
 
 ---
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Project Roadmap](#project-roadmap)
+  - [Goal](#goal)
+  - [Deliverables](#deliverables)
+  - [Pipeline](#pipeline)
+  - [Models Benchmarked](#models-benchmarked)
+  - [Success Criteria & Constraints](#success-criteria--constraints)
+- [Project Structure](#project-structure)
+- [Setup](#setup)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Environment Variables](#environment-variables)
+- [Usage](#usage)
+  - [1. Fetch Articles](#1-fetch-articles-both-sources)
+  - [2. Ingest with Docling](#2-ingest-with-docling)
+  - [3. Clean Dataset](#3-clean-dataset)
+  - [4. Build the RAG Vector Stores](#4-build-the-rag-vector-stores)
+  - [5. Push to Quay](#5-push-to-quay-after-building)
+  - [6. Run the Editorial Assistant GUI](#6-run-the-editorial-assistant-gui)
+  - [7. Benchmark Models](#7-benchmark-models)
+- [Quay Repositories](#quay-repositories)
+- [Models Tested](#models-tested)
+- [Evaluation](#evaluation)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 ## Project Roadmap
 
 ### Goal
